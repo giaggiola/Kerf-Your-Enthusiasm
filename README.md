@@ -61,7 +61,7 @@ Open [http://localhost:3000](http://localhost:3000). The cut optimizer and all c
 Copy the example env file and fill it in:
 
 ```bash
-cp .env.local.example .env.local
+cp .env.example .env.local
 ```
 
 ```env
@@ -70,9 +70,26 @@ BETTER_AUTH_URL=http://localhost:3000
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+ALLOWED_EMAILS=you@example.com
 ```
 
-The SQLite database lives at `./data/app.db` and is created automatically on first run. For Google OAuth, set up credentials in the [Google Cloud Console](https://console.cloud.google.com/) with `http://localhost:3000/api/auth/callback/google` as the redirect URI.
+The SQLite database lives at `./data/app.db`. Its schema is applied on container
+boot by `drizzle-kit push`; running outside Docker, apply it once yourself with
+`npx drizzle-kit push`. For Google OAuth, set up credentials in the
+[Google Cloud Console](https://console.cloud.google.com/) with
+`http://localhost:3000/api/auth/callback/google` as the redirect URI.
+
+`ALLOWED_EMAILS` is a comma-separated allowlist of the Google accounts that may
+sign in — anyone else is turned away at sign-up and on every subsequent request.
+In production an unset list denies everyone, so a misconfigured deploy locks the
+app rather than opening it to the world. Locally an unset list lets any
+authenticated account in, so `npm run dev` needs no extra setup.
+
+Everything that touches the server — saved projects, the tool inventory, STEP
+import — requires a signed-in allowlisted account. The calculators and the cut
+list optimizer stay public: they run entirely in your browser against
+localStorage. To lock those down too, add their paths to the matcher in
+`src/proxy.ts`.
 
 If you don't care about sign-in, skip all of this.
 
@@ -125,7 +142,7 @@ docker run -p 3000:3000 \
   kerfuffle
 ```
 
-> **Note:** the Python backend image is large (~1 GB) because CadQuery requires OpenCASCADE native binaries. If you don't need STEP file import, you can omit the `backend` service and the image stays small.
+> **Note:** the Python backend image is large (~3 GB) because CadQuery pulls in OpenCASCADE native binaries plus the system OpenGL libraries they link against. If you don't need STEP file import, you can omit the `backend` service and the image stays small.
 
 ---
 

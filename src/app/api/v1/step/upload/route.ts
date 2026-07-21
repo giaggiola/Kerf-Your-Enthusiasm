@@ -1,8 +1,12 @@
 import { NextRequest } from 'next/server';
 
 import { FASTAPI, readJsonResponse, stepBackendUnavailable } from '../_utils';
+import { getSession, unauthorized } from '@/lib/session';
 
 export async function POST(request: NextRequest) {
+  const session = await getSession();
+  if (!session) return unauthorized();
+
   const formData = await request.formData();
   try {
     const upstream = await fetch(`${FASTAPI}/session/upload`, { method: 'POST', body: formData });

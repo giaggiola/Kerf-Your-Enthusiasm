@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDevSession } from '@/lib/dev-session';
+import { getSession, unauthorized } from '@/lib/session';
 import { db } from '@/db';
 import { projects, stocks, cuts, projectStepFiles } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -35,7 +35,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = getDevSession();
+  const session = await getSession();
+  if (!session) return unauthorized();
 
   const { id } = await params;
 
@@ -59,7 +60,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = getDevSession();
+  const session = await getSession();
+  if (!session) return unauthorized();
 
   const { id } = await params;
   const body = await request.json();
@@ -161,7 +163,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = getDevSession();
+  const session = await getSession();
+  if (!session) return unauthorized();
 
   const { id } = await params;
 

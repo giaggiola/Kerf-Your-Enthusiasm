@@ -16,7 +16,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV BETTER_AUTH_SECRET=placeholder
 ENV DATABASE_PATH=/data/app.db
 
-RUN mkdir -p data && npm run build
+# Next evaluates every route module to collect page data, and those modules
+# import src/db, which opens DATABASE_PATH at import time. The directory has to
+# exist for the build to get that far — this throwaway copy is not the one the
+# app runs against; that lives on the volume mounted at /data.
+RUN mkdir -p /data && npm run build
 
 # ── Stage 3: production runner ────────────────────────────────────────────────
 FROM node:20-alpine AS runner
@@ -35,17 +39,35 @@ RUN mkdir .next && chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Drizzle schema + runtime deps for DB migrations
+# Drizzle schema + runtime deps for the boot-time schema push.
+# drizzle-kit reads the TypeScript config and schema through esbuild, and npm
+# hoists those to the top-level node_modules — copying drizzle-kit alone leaves
+# it unable to resolve them, so its dependency tree comes along explicitly.
 COPY --from=builder --chown=nextjs:nodejs /app/src/db              ./src/db
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts   ./
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/drizzle-kit  ./node_modules/drizzle-kit
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/drizzle-orm  ./node_modules/drizzle-orm
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/esbuild         ./node_modules/esbuild
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@esbuild        ./node_modules/@esbuild
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/esbuild-register ./node_modules/esbuild-register
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@esbuild-kit    ./node_modules/@esbuild-kit
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@drizzle-team   ./node_modules/@drizzle-team
+
+COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
+# The SQLite file and uploaded STEP files both live under /data, which is a
+# mounted volume in every deployment. Creating it here with the right owner is
+# what lets an empty named volume come up writable for the unprivileged user.
+RUN mkdir -p /data/step-files && chown -R nextjs:nodejs /data
 
 USER nextjs
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV DATABASE_PATH=/data/app.db
+ENV STEP_STORAGE_DIR=/data/step-files
 
-CMD ["node", "server.js"]
+CMD ["./docker-entrypoint.sh"]

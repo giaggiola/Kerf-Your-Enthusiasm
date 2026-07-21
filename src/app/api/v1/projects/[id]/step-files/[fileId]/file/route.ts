@@ -3,14 +3,15 @@ import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { projectStepFiles, projects } from '@/db/schema';
-import { getDevSession } from '@/lib/dev-session';
+import { getSession, unauthorized } from '@/lib/session';
 import { readPersistedProjectStepFile } from '@/server/project-step-files';
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string; fileId: string }> }
 ) {
-  const session = getDevSession();
+  const session = await getSession();
+  if (!session) return unauthorized();
   const { id, fileId } = await params;
 
   const project = await db.query.projects.findFirst({

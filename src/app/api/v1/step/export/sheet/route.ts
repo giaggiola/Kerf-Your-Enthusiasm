@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { FASTAPI, stepBackendUnavailable } from '../../_utils';
+import { getSession, unauthorized } from '@/lib/session';
 
 export async function POST(request: NextRequest) {
+  const session = await getSession();
+  if (!session) return unauthorized();
+
   const body = await request.json();
   try {
     const upstream = await fetch(`${FASTAPI}/export/sheet`, {

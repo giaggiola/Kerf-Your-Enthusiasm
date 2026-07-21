@@ -3,7 +3,7 @@ import { and, count, eq } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { cuts, projectStepFiles, projects } from '@/db/schema';
-import { getDevSession } from '@/lib/dev-session';
+import { getSession, unauthorized } from '@/lib/session';
 import {
   clearCachedStepSession,
   deletePersistedProjectStepFile,
@@ -29,7 +29,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; fileId: string }> }
 ) {
-  const session = getDevSession();
+  const session = await getSession();
+  if (!session) return unauthorized();
   const { id, fileId } = await params;
 
   const owned = await getOwnedStepFile(id, fileId, session.user.id);
@@ -69,7 +70,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string; fileId: string }> }
 ) {
-  const session = getDevSession();
+  const session = await getSession();
+  if (!session) return unauthorized();
   const { id, fileId } = await params;
 
   const owned = await getOwnedStepFile(id, fileId, session.user.id);

@@ -3,7 +3,7 @@ import { and, eq, max } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { projectStepFiles, projects } from '@/db/schema';
-import { getDevSession } from '@/lib/dev-session';
+import { getSession, unauthorized } from '@/lib/session';
 import {
   cacheStepSession,
   persistProjectStepFile,
@@ -15,7 +15,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = getDevSession();
+  const session = await getSession();
+  if (!session) return unauthorized();
   const { id } = await params;
 
   const project = await db.query.projects.findFirst({
@@ -99,7 +100,8 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = getDevSession();
+  const session = await getSession();
+  if (!session) return unauthorized();
   const { id } = await params;
 
   const project = await db.query.projects.findFirst({

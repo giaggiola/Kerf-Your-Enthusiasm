@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDevSession } from '@/lib/dev-session';
+import { getSession, unauthorized } from '@/lib/session';
 import { db } from '@/db';
 import { projects, stocks, cuts, tools } from '@/db/schema';
 
@@ -28,7 +28,8 @@ interface LocalTool {
 }
 
 export async function POST(request: NextRequest) {
-  const session = getDevSession();
+  const session = await getSession();
+  if (!session) return unauthorized();
 
   const body = await request.json();
   const localStocks: LocalStock[] = body.stocks || [];

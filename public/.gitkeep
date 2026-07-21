@@ -1,0 +1,3 @@
+# Next.js serves static files from here. Kept so the Dockerfile COPY of
+# /app/public succeeds even while the app has no static assets of its own
+# (the favicon lives in src/app/, handled by app-router metadata).

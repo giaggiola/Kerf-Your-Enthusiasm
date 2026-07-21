@@ -1,7 +1,9 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { APIError } from 'better-auth/api';
 import { db } from '@/db';
 import * as schema from '@/db/schema';
+import { isEmailAllowed } from '@/lib/allowed-emails';
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -17,6 +19,22 @@ export const auth = betterAuth({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        // Refuse to create an account for anyone off the allowlist, so a
+        // stranger's Google sign-in never leaves a user row behind. Throwing
+        // sends them to the error page (see `pages.error`) instead of a 500.
+        before: async (user) => {
+          if (!isEmailAllowed(user.email)) {
+            throw new APIError('FORBIDDEN', {
+              message: 'This account is not allowed to sign in.',
+            });
+          }
+        },
+      },
     },
   },
   session: {

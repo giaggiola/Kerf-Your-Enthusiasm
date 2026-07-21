@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDevSession } from '@/lib/dev-session';
+import { getSession, unauthorized } from '@/lib/session';
 import { db } from '@/db';
 import { projects, cuts } from '@/db/schema';
 import { eq, and, max } from 'drizzle-orm';
@@ -9,7 +9,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = getDevSession();
+  const session = await getSession();
+  if (!session) return unauthorized();
   const { id } = await params;
 
   // Verify ownership

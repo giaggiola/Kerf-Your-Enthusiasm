@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDevSession } from '@/lib/dev-session';
+import { getSession, unauthorized } from '@/lib/session';
 import { db } from '@/db';
 import { projects, stocks, cuts } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
@@ -32,7 +32,8 @@ type ProjectStockInput = {
 };
 
 export async function GET() {
-  const session = getDevSession();
+  const session = await getSession();
+  if (!session) return unauthorized();
 
   const userProjects = await db.query.projects.findMany({
     where: eq(projects.userId, session.user.id),
@@ -54,7 +55,9 @@ export async function POST(request: NextRequest) {
     return rateLimitResponse(rl.resetIn);
   }
 
-  const session = getDevSession();
+  const session = await getSession();
+
+  if (!session) return unauthorized();
 
   const body = await request.json();
 
