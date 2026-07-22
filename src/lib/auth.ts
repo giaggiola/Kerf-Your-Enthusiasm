@@ -26,7 +26,7 @@ export const auth = betterAuth({
       create: {
         // Refuse to create an account for anyone off the allowlist, so a
         // stranger's Google sign-in never leaves a user row behind. Throwing
-        // sends them to the error page (see `pages.error`) instead of a 500.
+        // hands off to onAPIError below, which redirects to /auth-error.
         before: async (user) => {
           if (!isEmailAllowed(user.email)) {
             throw new APIError('FORBIDDEN', {
@@ -49,8 +49,11 @@ export const auth = betterAuth({
     process.env.BETTER_AUTH_URL || 'http://localhost:3000',
     process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
   ],
-  pages: {
-    error: '/auth-error',
+  // `pages: { error }` is a NextAuth option — Better-Auth ignores it silently,
+  // so rejected sign-ins were landing on its built-in /api/auth/error page
+  // instead of the app's. onAPIError.errorURL is the equivalent it honours.
+  onAPIError: {
+    errorURL: '/auth-error',
   },
 });
 
