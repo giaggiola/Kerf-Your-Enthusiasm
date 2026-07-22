@@ -1,6 +1,15 @@
 # ── Stage 1: install JS deps ──────────────────────────────────────────────────
 FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat python3 make g++
+# Retried because the Alpine CDN intermittently fails to serve the package index
+# from this host: a single I/O error fetching APKINDEX makes apk report every
+# package as "no such package" and kills the build. That failed a deploy on
+# 2026-07-22 which then succeeded unchanged on retry.
+RUN for attempt in 1 2 3; do \
+      apk add --no-cache libc6-compat python3 make g++ && exit 0; \
+      echo "apk add failed (attempt ${attempt}/3); retrying in 10s"; \
+      sleep 10; \
+    done; \
+    echo "apk add failed after 3 attempts" >&2; exit 1
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
