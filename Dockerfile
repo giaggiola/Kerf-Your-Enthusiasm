@@ -21,8 +21,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
-# Placeholder so the build succeeds — real values are injected at runtime
-ENV BETTER_AUTH_SECRET=placeholder
+# Placeholders so the build succeeds — real values are injected at runtime.
+# The secret must be at least 32 characters or Better-Auth throws while Next is
+# collecting page data. It is deliberately not a real secret: an ENV here would
+# be baked into the image, and it also shadows the build ARG Coolify injects.
+ENV BETTER_AUTH_SECRET=build-time-placeholder-not-a-real-secret
 ENV DATABASE_PATH=/data/app.db
 
 # Next evaluates every route module to collect page data, and those modules

@@ -6,7 +6,34 @@ const dbPath = process.env.DATABASE_PATH || './data/app.db';
 
 // Ensure the database file exists
 const sqlite = new Database(dbPath);
-sqlite.pragma('journal_mode = WAL');
+
+// Wait for a competing writer instead of failing instantly with SQLITE_BUSY.
+// This module writes at import time (the WAL pragma below, plus the seed and
+// the ALTERs), and `next build` collects page data in three parallel worker
+// processes that all import it against the same file — without a busy timeout
+// whichever workers lose the race abort the build with "database is locked".
+// It has to be set before any other statement to cover them all.
+sqlite.pragma('busy_timeout = 10000');
+
+// The busy timeout does not cover this one statement: switching journal mode
+// needs a brief exclusive lock, and SQLite fails it immediately instead of
+// invoking the busy handler. So retry it by hand, and if it still will not take,
+// carry on in the default journal mode — WAL is a performance choice, not a
+// correctness one, and it is not worth failing a build over.
+for (let attempt = 0; ; attempt++) {
+  try {
+    sqlite.pragma('journal_mode = WAL');
+    break;
+  } catch (error) {
+    if (attempt >= 20) {
+      console.warn('[db] could not enable WAL mode, continuing without it:', error);
+      break;
+    }
+    // Synchronous sleep — better-sqlite3 is synchronous, so there is no event
+    // loop turn to yield to here.
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+  }
+}
 
 // Seed a local dev user so all project/tool inserts have a valid user_id
 try {
