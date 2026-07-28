@@ -55,7 +55,9 @@ export function StepViewer3D({
   // Keep a ref to latest props so the Three.js loop can read them without
   // restarting the effect every render.
   const propsRef = useRef({ bodyStates, selectedBodyIdx, selectedFaceIndices, onSelectFace });
-  propsRef.current = { bodyStates, selectedBodyIdx, selectedFaceIndices, onSelectFace };
+  useEffect(() => {
+    propsRef.current = { bodyStates, selectedBodyIdx, selectedFaceIndices, onSelectFace };
+  }, [bodyStates, selectedBodyIdx, selectedFaceIndices, onSelectFace]);
 
   useEffect(() => {
     const container = containerRef.current;

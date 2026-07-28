@@ -515,10 +515,12 @@ console.log('\nTest 22: Sheet edge padding keeps the outer border clear');
   }
   validateResult(exactFitResult, 0.125, 'sheet-edge-padding');
 
-  const tooWide: Cut[] = [{ id: 2, label: 'TooWide', l: 20, w: 47, t: 0.75, qty: 1, mat: 'plywood' }];
+  // Fits the raw 48 × 96 stock, but exceeds the 46.5 × 94.5 usable inset
+  // in either orientation.
+  const tooWide: Cut[] = [{ id: 2, label: 'TooWide', l: 95, w: 47, t: 0.75, qty: 1, mat: 'plywood' }];
   const tooWideResult = optimizeCutsBest([STOCK_PLYWOOD], tooWide, 0.125, 0, [], [], edgePadding);
-  assertEq(tooWideResult.unplaced.length, 1, 'cut wider than the usable inset area is rejected');
-  assertEq(tooWideResult.sheets.length, 0, 'no sheet generated when only cut exceeds inset width');
+  assertEq(tooWideResult.unplaced.length, 1, 'cut larger than the usable inset in both orientations is rejected');
+  assertEq(tooWideResult.sheets.length, 0, 'no sheet generated when only cut exceeds the usable inset');
 }
 
 // ─── Summary ──────────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 import cadquery as cq
 from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
 from OCP.BRepClass import BRepClass_FaceClassifier
+from OCP.GCPnts import GCPnts_QuasiUniformDeflection
 from OCP.TopAbs import TopAbs_IN, TopAbs_ON, TopAbs_REVERSED
 from OCP.GeomAbs import (
     GeomAbs_Line, GeomAbs_Circle,
@@ -12,6 +13,43 @@ from OCP.GeomAbs import (
 )
 from OCP.BRepTools import BRepTools
 from OCP.gp import gp_Pnt, gp_Ax2, gp_Dir
+
+
+CURVE_DEFLECTION_MM = 0.05
+
+
+def _curve_polyline_points(curve_adaptor, to_uv, is_reversed: bool) -> list[list[float]]:
+    """Sample a curve with a bounded geometric error, preserving edge direction."""
+    try:
+        sampler = GCPnts_QuasiUniformDeflection(curve_adaptor, CURVE_DEFLECTION_MM)
+        if sampler.IsDone() and sampler.NbPoints() >= 2:
+            indices = range(1, sampler.NbPoints() + 1)
+            if is_reversed:
+                indices = reversed(range(1, sampler.NbPoints() + 1))
+            return [to_uv(sampler.Value(index)) for index in indices]
+    except Exception:
+        pass
+
+    # Defensive fallback for curve types the deflection sampler cannot handle.
+    first = curve_adaptor.FirstParameter()
+    last = curve_adaptor.LastParameter()
+    indices = range(49) if not is_reversed else reversed(range(49))
+    return [
+        to_uv(curve_adaptor.Value(first + (last - first) * index / 48))
+        for index in indices
+    ]
+
+
+def _dedupe_polyline_points(points: list[list[float]]) -> list[list[float]]:
+    if not points:
+        return []
+
+    deduped = [points[0]]
+    for point in points[1:]:
+        previous = deduped[-1]
+        if abs(point[0] - previous[0]) > 1e-8 or abs(point[1] - previous[1]) > 1e-8:
+            deduped.append(point)
+    return deduped
 
 
 def project_face_to_2d(solid_cq_shape: cq.Shape, face_index: int, debug: bool = False) -> Dict[str, Any]:
@@ -222,37 +260,19 @@ def _convert_edge(occ_edge, to_uv, plane_normal, debug=False) -> dict | None:
             if abs(proj_x - m[0]) < 1e-6 and abs(proj_y - m[1]) < 1e-6:
                 return {"type": "line", "start": s, "end": e}
 
-        # Otherwise, tessellate to polyline
-        n_pts = 48
-        pts = []
-        for i in range(n_pts + 1):
-            t = (first + (last - first) * i / n_pts) if not is_reversed else \
-                (last - (last - first) * i / n_pts)
-            p = curve_adaptor.Value(t)
-            pts.append(to_uv(p))
-
-        deduped = [pts[0]]
-        for pt in pts[1:]:
-            prev = deduped[-1]
-            if abs(pt[0] - prev[0]) > 1e-8 or abs(pt[1] - prev[1]) > 1e-8:
-                deduped.append(pt)
+        # Otherwise, tessellate to a bounded geometric deflection.
+        deduped = _dedupe_polyline_points(
+            _curve_polyline_points(curve_adaptor, to_uv, is_reversed)
+        )
         if len(deduped) < 2:
             return None
         return {"type": "polyline", "points": deduped}
 
     else:
-        # Unknown curve → tessellate
-        n_pts = 48
-        pts = []
-        for i in range(n_pts + 1):
-            t = first + (last - first) * i / n_pts
-            p = curve_adaptor.Value(t)
-            pts.append(to_uv(p))
-        deduped = [pts[0]]
-        for pt in pts[1:]:
-            prev = deduped[-1]
-            if abs(pt[0] - prev[0]) > 1e-8 or abs(pt[1] - prev[1]) > 1e-8:
-                deduped.append(pt)
+        # Unknown curve → use the same bounded-deflection tessellation.
+        deduped = _dedupe_polyline_points(
+            _curve_polyline_points(curve_adaptor, to_uv, is_reversed)
+        )
         if len(deduped) < 2:
             return None
         return {"type": "polyline", "points": deduped}
@@ -690,6 +710,10 @@ def collapse_closed_line_loops(edges: List[dict]) -> List[dict]:
 
 
 def _edge_midpoint_and_tangent(edge: dict) -> tuple[list[float], list[float]] | None:
+    exact_sample = edge.get("_boundary_sample")
+    if exact_sample is not None:
+        return exact_sample
+
     if edge["type"] == "line":
         start = edge["start"]
         end = edge["end"]
@@ -748,6 +772,42 @@ def _edge_midpoint_and_tangent(edge: dict) -> tuple[list[float], list[float]] | 
         return None
 
     return ([(start[0] + end[0]) / 2, (start[1] + end[1]) / 2], [dx, dy])
+
+
+def _exact_curve_boundary_sample(occ_edge, to_uv) -> tuple[list[float], list[float]] | None:
+    """
+    Return a point and tangent that lie on the exact OCC curve.
+
+    Projected B-splines are represented as polylines for JSON/DXF consumers.
+    A midpoint of one of those approximation chords can sit noticeably inside
+    a curved face, so it is not safe for the inside/outside profile test.
+    """
+    adaptor = BRepAdaptor_Curve(occ_edge)
+    first = adaptor.FirstParameter()
+    last = adaptor.LastParameter()
+    span = last - first
+    if not all(math.isfinite(value) for value in (first, last, span)) or abs(span) < 1e-10:
+        return None
+
+    middle = (first + last) / 2.0
+    delta = max(abs(span) * 1e-6, 1e-9)
+    delta = min(delta, abs(span) / 4.0)
+    before_t = max(min(first, last), middle - delta)
+    after_t = min(max(first, last), middle + delta)
+    if math.isclose(before_t, after_t, abs_tol=1e-12):
+        return None
+
+    midpoint = to_uv(adaptor.Value(middle))
+    before = to_uv(adaptor.Value(before_t))
+    after = to_uv(adaptor.Value(after_t))
+    tangent = [after[0] - before[0], after[1] - before[1]]
+
+    if occ_edge.Orientation() == TopAbs_REVERSED:
+        tangent = [-tangent[0], -tangent[1]]
+
+    if math.hypot(tangent[0], tangent[1]) < 1e-10:
+        return None
+    return (midpoint, tangent)
 
 
 def _point_on_parallel_face_plane(
@@ -1178,7 +1238,12 @@ def project_body_orthographic(
             for edge in wire.Edges():
                 projected = _convert_edge(edge.wrapped, to_uv, normal, debug)
                 if projected and not (projected["type"] == "arc" and projected.get("is_full_circle")):
-                    profile_candidate_edges.setdefault(_edge_projection_key(projected), projected)
+                    candidate = dict(projected)
+                    if projected["type"] == "polyline":
+                        boundary_sample = _exact_curve_boundary_sample(edge.wrapped, to_uv)
+                        if boundary_sample is not None:
+                            candidate["_boundary_sample"] = boundary_sample
+                    profile_candidate_edges.setdefault(_edge_projection_key(projected), candidate)
 
     if debug:
         for d, fs in sorted(depth_groups.items()):
@@ -1281,7 +1346,8 @@ def project_body_orthographic(
         if key in profile_present:
             continue
         profile_present.add(key)
-        edges_out.append({**edge, "layer": "PROFILE"})
+        clean_edge = {k: v for k, v in edge.items() if not k.startswith("_")}
+        edges_out.append({**clean_edge, "layer": "PROFILE"})
 
     edges_out = _filter_closed_hole_components(edges_out)
 

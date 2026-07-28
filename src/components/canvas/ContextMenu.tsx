@@ -2,10 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import type { PartInstanceKey } from '@/types';
 
 interface ContextMenuProps {
-  targetKey: PartInstanceKey;
   clientX: number;
   clientY: number;
   isPinned: boolean;
@@ -22,7 +20,6 @@ interface ContextMenuProps {
 }
 
 export default function ContextMenu({
-  targetKey: _targetKey,
   clientX,
   clientY,
   isPinned,

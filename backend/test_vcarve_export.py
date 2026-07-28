@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 import re
 import tempfile
 
@@ -8,7 +9,7 @@ import ezdxf
 
 from dxf_export import export_body_face
 from projection import project_body_orthographic
-from sheet_export import build_sheet_dxf
+from sheet_export import build_sheet_dxf, build_sheet_preview
 from vcarve_layers import map_layer_name
 
 
@@ -90,22 +91,30 @@ def test_vcarve_dxf_uses_operation_layers():
 def test_vcarve_sheet_dxf_uses_same_operation_layers():
     shape = _build_test_part()
     face_index = _top_planar_face_index(shape)
+    placements = [
+        {
+            "body_index": 0,
+            "face_index": face_index,
+            "body_name": "Left Side",
+            "x_mm": 10,
+            "y_mm": 20,
+            "rot": True,
+            "session_id": "",
+        }
+    ]
 
     doc = build_sheet_dxf(
         sheet_width_mm=300,
         sheet_length_mm=300,
         sheet_name="Birch",
-        placements=[
-            {
-                "body_index": 0,
-                "face_index": face_index,
-                "body_name": "Left Side",
-                "x_mm": 10,
-                "y_mm": 20,
-                "rot": False,
-                "session_id": "",
-            }
-        ],
+        placements=placements,
+        bodies_by_session={"": [{"index": 0, "shape": shape}]},
+        layer_style="vcarve",
+    )
+    preview = build_sheet_preview(
+        sheet_width_mm=300,
+        sheet_length_mm=300,
+        placements=placements,
         bodies_by_session={"": [{"index": 0, "shape": shape}]},
         layer_style="vcarve",
     )
@@ -117,3 +126,10 @@ def test_vcarve_sheet_dxf_uses_same_operation_layers():
     assert "OUTSIDE_PROFILE" in layers
     assert "POCKET_12MM" in layers
     assert "INTERIOR_OPENINGS" not in layers
+
+    # Browser preview and downloaded DXF must use the same geometry/layers.
+    dxf_geometry = [entity for entity in doc.modelspace() if entity.dxftype() != "TEXT"]
+    assert len(dxf_geometry) == len(preview["edges"])
+    assert Counter(entity.dxf.layer for entity in dxf_geometry) == Counter(
+        edge["layer"] for edge in preview["edges"]
+    )

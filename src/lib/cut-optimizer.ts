@@ -2,6 +2,22 @@ import { Stock, Cut, Sheet, OptimizationResult, PlacedCut, Rect, PinnedPlacement
 import { MaxRectsPacker, PACKING_LOGIC } from 'maxrects-packer';
 import { expandCutsWithKeys, makeInstanceKey } from '@/lib/instance-key';
 
+const DEBUG_OPTIMIZER =
+  process.env.NODE_ENV === 'development' &&
+  process.env.NEXT_PUBLIC_DEBUG_OPTIMIZER === 'true';
+
+function debugLog(...args: unknown[]): void {
+  if (DEBUG_OPTIMIZER) console.debug(...args);
+}
+
+function debugGroup(label: string): void {
+  if (DEBUG_OPTIMIZER) console.group(label);
+}
+
+function debugGroupEnd(): void {
+  if (DEBUG_OPTIMIZER) console.groupEnd();
+}
+
 interface Placement {
   rectIndex: number;
   rotated: boolean;
@@ -365,7 +381,7 @@ function selectBestStock(
   stockUsage: Map<number, number>,
   sheetEdgePadding: number = 0
 ): Stock | null {
-  console.log('  selectBestStock called with', stocks.length, 'stocks and', remainingCuts.length, 'remaining cuts');
+  debugLog('  selectBestStock called with', stocks.length, 'stocks and', remainingCuts.length, 'remaining cuts');
 
   if (remainingCuts.length === 0) return null;
 
@@ -377,7 +393,7 @@ function selectBestStock(
     const used = stockUsage.get(s.id) || 0;
     const available = (s.qty ?? 1) - used;
     if (available <= 0) {
-      console.log(`    Stock ${s.name} - no more available (used ${used}/${s.qty ?? 1})`);
+      debugLog(`    Stock ${s.name} - no more available (used ${used}/${s.qty ?? 1})`);
       return false;
     }
     const canFitAny = remainingCuts.some(cut => {
@@ -386,11 +402,11 @@ function selectBestStock(
       if (cMat && sMat && cMat !== sMat) return false;
       return stockCanFitCut(s, cut, sheetEdgePadding);
     });
-    console.log(`    Stock ${s.name} (${s.w}×${s.l}) qty:${available}/${s.qty ?? 1} canFitAny: ${canFitAny}`);
+    debugLog(`    Stock ${s.name} (${s.w}×${s.l}) qty:${available}/${s.qty ?? 1} canFitAny: ${canFitAny}`);
     return canFitAny;
   });
 
-  console.log('  Viable stocks:', viableStocks.map(s => s.name));
+  debugLog('  Viable stocks:', viableStocks.map(s => s.name));
 
   if (viableStocks.length === 0) return null;
 
@@ -420,7 +436,7 @@ function selectBestStock(
     return { stock, fittableCuts, fillRatio, canFitAll, stockArea, totalCutArea };
   });
 
-  console.log('  Stock scores:', scored.map(s =>
+  debugLog('  Stock scores:', scored.map(s =>
     `${s.stock.name}: fits=${s.fittableCuts}, fill=${(s.fillRatio * 100).toFixed(1)}%, canFitAll=${s.canFitAll}, area=${s.stockArea}`
   ));
 
@@ -445,7 +461,7 @@ function selectBestStock(
     return b.stockArea - a.stockArea;
   });
 
-  console.log('  Selected:', scored[0]?.stock.name);
+  debugLog('  Selected:', scored[0]?.stock.name);
   return scored[0]?.stock || null;
 }
 
@@ -558,10 +574,10 @@ export function optimizeCuts(
   kerf: number,
   sheetEdgePadding: number = 0
 ): OptimizationResult {
-  console.group('🪚 Cut Optimizer - Guillotine');
-  console.log('Input stocks:', stocks.map(s => `${s.name} (${s.w}×${s.l})`));
-  console.log('Input cuts:', cuts.map(c => `${c.label} ${c.w}×${c.l} qty:${c.qty}`));
-  console.log('Kerf:', kerf);
+  debugGroup('🪚 Cut Optimizer - Guillotine');
+  debugLog('Input stocks:', stocks.map(s => `${s.name} (${s.w}×${s.l})`));
+  debugLog('Input cuts:', cuts.map(c => `${c.label} ${c.w}×${c.l} qty:${c.qty}`));
+  debugLog('Kerf:', kerf);
 
   const results: Sheet[] = [];
   const stockUsage = new Map<number, number>();
@@ -569,14 +585,14 @@ export function optimizeCuts(
   // Expand cuts by quantity with stable instance keys
   const allCutsExpanded = expandCutsWithKeys(cuts);
   const allCuts = sortCuts(allCutsExpanded) as typeof allCutsExpanded;
-  console.log('Sorted cuts (by area):', allCuts.map(c => `${c.label} ${c.w}×${c.l} = ${c.w * c.l} sq in`));
+  debugLog('Sorted cuts (by area):', allCuts.map(c => `${c.label} ${c.w}×${c.l} = ${c.w * c.l} sq in`));
 
   let remaining: Cut[] = [...allCuts];
   let sheetCount = 0;
 
   while (remaining.length > 0 && sheetCount < 50) {
     const stock = selectBestStock(stocks, remaining, stockUsage, sheetEdgePadding);
-    console.log(`Sheet ${sheetCount + 1}: Selected stock:`, stock ? `${stock.name} (${stock.w}×${stock.l})` : 'NONE');
+    debugLog(`Sheet ${sheetCount + 1}: Selected stock:`, stock ? `${stock.name} (${stock.w}×${stock.l})` : 'NONE');
     if (!stock) break;
 
     // Try both orientations for the first cut and pick the better result
@@ -587,7 +603,7 @@ export function optimizeCuts(
     let bestResult = resultNormal;
     if (resultRotated.placed.length > resultNormal.placed.length) {
       bestResult = resultRotated;
-      console.log(`    Using rotated first cut (places ${resultRotated.placed.length} vs ${resultNormal.placed.length})`);
+      debugLog(`    Using rotated first cut (places ${resultRotated.placed.length} vs ${resultNormal.placed.length})`);
     } else if (resultRotated.placed.length === resultNormal.placed.length) {
       // Same number placed - prefer lower total waste
       const normalUsed = resultNormal.sheet.cuts.reduce((a, c) => a + c.pw * c.ph, 0);
@@ -599,10 +615,10 @@ export function optimizeCuts(
 
     // Log the placements
     for (const c of bestResult.sheet.cuts) {
-      console.log(`    Placed ${c.label} (${c.pw}×${c.ph}${c.rot ? ' ROTATED' : ''}) at (${c.x}, ${c.y})`);
+      debugLog(`    Placed ${c.label} (${c.pw}×${c.ph}${c.rot ? ' ROTATED' : ''}) at (${c.x}, ${c.y})`);
     }
     for (const c of bestResult.unplaced.slice(0, 3)) {
-      console.log(`    ❌ Could NOT place ${c.label} (${c.w}×${c.l})`);
+      debugLog(`    ❌ Could NOT place ${c.label} (${c.w}×${c.l})`);
     }
 
     // Track stock usage
@@ -617,8 +633,8 @@ export function optimizeCuts(
     if (bestResult.sheet.cuts.length === 0) break;
   }
 
-  console.log('Result:', results.length, 'sheets,', remaining.length, 'unplaced');
-  console.groupEnd();
+  debugLog('Result:', results.length, 'sheets,', remaining.length, 'unplaced');
+  debugGroupEnd();
 
   return { sheets: results, unplaced: remaining };
 }
@@ -1113,11 +1129,11 @@ export function optimizeCutsOptimal(
   timeLimit: number = 2000, // 2 second default timeout
   sheetEdgePadding: number = 0
 ): OptimizationResult {
-  console.group('🎯 Cut Optimizer - Branch & Bound (Optimal)');
-  console.log('Input stocks:', stocks.map(s => `${s.name} (${s.w}×${s.l})`));
-  console.log('Input cuts:', cuts.map(c => `${c.label} ${c.w}×${c.l} qty:${c.qty}`));
-  console.log('Kerf:', kerf);
-  console.log('Time limit:', timeLimit, 'ms');
+  debugGroup('🎯 Cut Optimizer - Branch & Bound (Optimal)');
+  debugLog('Input stocks:', stocks.map(s => `${s.name} (${s.w}×${s.l})`));
+  debugLog('Input cuts:', cuts.map(c => `${c.label} ${c.w}×${c.l} qty:${c.qty}`));
+  debugLog('Kerf:', kerf);
+  debugLog('Time limit:', timeLimit, 'ms');
 
   const results: Sheet[] = [];
   const stockUsage = new Map<number, number>();
@@ -1126,7 +1142,7 @@ export function optimizeCutsOptimal(
   const allCuts = sortCuts(expandCutsWithKeys(cuts)) as Array<Cut & { instanceKey: string }>;
 
   const totalCuts = allCuts.length;
-  console.log('Total cuts to place:', totalCuts);
+  debugLog('Total cuts to place:', totalCuts);
 
   let remaining: Cut[] = [...allCuts];
   let sheetCount = 0;
@@ -1138,7 +1154,7 @@ export function optimizeCutsOptimal(
     const usableRect = getUsableSheetRect(stock, sheetEdgePadding);
     if (!usableRect) break;
 
-    console.log(`Sheet ${sheetCount + 1}: Searching optimal layout for ${stock.name} (${stock.w}×${stock.l})...`);
+    debugLog(`Sheet ${sheetCount + 1}: Searching optimal layout for ${stock.name} (${stock.w}×${stock.l})...`);
 
     // Filter to only cuts that match this stock's material and thickness.
     // Without this, B&B could place material-mismatched cuts on the sheet.
@@ -1175,8 +1191,8 @@ export function optimizeCutsOptimal(
     );
 
     const elapsed = Date.now() - sheetStartTime;
-    console.log(`  Searched ${stats.nodes} nodes in ${elapsed}ms`);
-    console.log(`  Placed ${result.placed.length}/${remaining.length} cuts${result.allPlaced ? ' (ALL PLACED!)' : ''}`);
+    debugLog(`  Searched ${stats.nodes} nodes in ${elapsed}ms`);
+    debugLog(`  Placed ${result.placed.length}/${remaining.length} cuts${result.allPlaced ? ' (ALL PLACED!)' : ''}`);
 
     if (result.placed.length > 0) {
       stockUsage.set(stock.id, (stockUsage.get(stock.id) || 0) + 1);
@@ -1215,7 +1231,7 @@ export function optimizeCutsOptimal(
 
       // Log placements
       for (const c of result.placed) {
-        console.log(`    ✓ ${c.label} (${c.pw}×${c.ph}${c.rot ? ' ROT' : ''}) at (${c.x}, ${c.y})`);
+        debugLog(`    ✓ ${c.label} (${c.pw}×${c.ph}${c.rot ? ' ROT' : ''}) at (${c.x}, ${c.y})`);
       }
     } else {
       break;
@@ -1223,14 +1239,14 @@ export function optimizeCutsOptimal(
 
     // Check total timeout
     if (Date.now() - startTime > timeLimit) {
-      console.log('  Time limit reached, stopping search');
+      debugLog('  Time limit reached, stopping search');
       break;
     }
   }
 
   const totalElapsed = Date.now() - startTime;
-  console.log(`Result: ${results.length} sheets, ${remaining.length} unplaced, ${totalElapsed}ms total`);
-  console.groupEnd();
+  debugLog(`Result: ${results.length} sheets, ${remaining.length} unplaced, ${totalElapsed}ms total`);
+  debugGroupEnd();
 
   return { sheets: results, unplaced: remaining };
 }
@@ -1277,9 +1293,9 @@ export function optimizeCutsBest(
   sheetAssignments: SheetAssignment[] = [],
   sheetEdgePadding: number = 0
 ): OptimizationResult {
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log('🪵 OPTIMIZE CUTS BEST - Starting optimization');
-  console.log(
+  debugLog('═══════════════════════════════════════════════════════════');
+  debugLog('🪵 OPTIMIZE CUTS BEST - Starting optimization');
+  debugLog(
     'Kerf:',
     kerf,
     '| Padding:',
@@ -1291,7 +1307,7 @@ export function optimizeCutsBest(
     '| Assigned:',
     sheetAssignments.length
   );
-  console.log('═══════════════════════════════════════════════════════════');
+  debugLog('═══════════════════════════════════════════════════════════');
 
   // Keys to exclude from free packing (already pinned or manually assigned)
   const pinnedKeys = new Set(pinnedPlacements.map(p => p.key));
@@ -1419,12 +1435,12 @@ export function optimizeCutsBest(
   const sStats = calculateStats(shelf);
   const mStats = calculateStats(maxrects);
 
-  console.log('Guillotine result:', gStats.sheets, 'sheets,', gStats.waste + '% waste,', guillotine.unplaced.length, 'unplaced');
-  console.log('Shelf result:', sStats.sheets, 'sheets,', sStats.waste + '% waste,', shelf.unplaced.length, 'unplaced');
-  console.log('MaxRects result:', mStats.sheets, 'sheets,', mStats.waste + '% waste,', maxrects.unplaced.length, 'unplaced');
+  debugLog('Guillotine result:', gStats.sheets, 'sheets,', gStats.waste + '% waste,', guillotine.unplaced.length, 'unplaced');
+  debugLog('Shelf result:', sStats.sheets, 'sheets,', sStats.waste + '% waste,', shelf.unplaced.length, 'unplaced');
+  debugLog('MaxRects result:', mStats.sheets, 'sheets,', mStats.waste + '% waste,', maxrects.unplaced.length, 'unplaced');
   if (optimal) {
     const oStats = calculateStats(optimal);
-    console.log('Optimal result:', oStats.sheets, 'sheets,', oStats.waste + '% waste,', optimal.unplaced.length, 'unplaced');
+    debugLog('Optimal result:', oStats.sheets, 'sheets,', oStats.waste + '% waste,', optimal.unplaced.length, 'unplaced');
   }
 
   // Compare all algorithms and pick the best
@@ -1434,8 +1450,8 @@ export function optimizeCutsBest(
     ({ result, winner } = compareSolutions(result, winner, optimal, 'optimal'));
   }
 
-  console.log('Winner:', winner);
-  console.log('═══════════════════════════════════════════════════════════');
+  debugLog('Winner:', winner);
+  debugLog('═══════════════════════════════════════════════════════════');
 
   // Deflate placements back to real dimensions: shift x/y inward by padding,
   // shrink pw/ph, and restore original l/w on each placed cut.

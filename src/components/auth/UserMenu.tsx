@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { signOut, useSession } from '@/lib/auth-client';
 
@@ -40,9 +41,11 @@ export function UserMenu() {
         className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 transition-colors"
       >
         {session.user.image ? (
-          <img
+          <Image
             src={session.user.image}
             alt={session.user.name || 'User'}
+            width={32}
+            height={32}
             className="w-8 h-8 rounded-full"
           />
         ) : (

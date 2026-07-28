@@ -170,6 +170,57 @@ def _angle_in_arc(angle: float, start: float, end: float) -> bool:
     return angle >= start or angle <= end
 
 
+def _shift_edges(edges: List[Dict], u_off: float, v_off: float) -> List[Dict]:
+    """Translate projected edges without rotating them."""
+    return [_translate_edge(edge, u_off, v_off, False) for edge in edges]
+
+
+def _normalize_edges(edges: List[Dict]) -> List[Dict]:
+    """Return edges translated so their geometric bounding box starts at (0, 0)."""
+    if not edges:
+        return []
+    min_u, min_v, _, _ = _edge_bbox(edges)
+    if abs(min_u) <= 1e-6 and abs(min_v) <= 1e-6:
+        return edges
+    return _shift_edges(edges, -min_u, -min_v)
+
+
+def _prepare_placement_edges(
+    body: dict,
+    face_index: int,
+    x_mm: float,
+    y_mm: float,
+    rot: bool,
+) -> List[Dict]:
+    """
+    Run the shared projection/orientation/placement pipeline for sheet outputs.
+
+    Both DXF export and browser preview consume this exact geometry so they
+    cannot drift into subtly different normalization or rotation behavior.
+    """
+    try:
+        edge_data = project_body_orthographic(
+            body["shape"],
+            face_index,
+            reference_mode="selected",
+        )
+    except Exception:
+        return []
+
+    normalized = _normalize_edges(edge_data.get("edges", []))
+    if not normalized:
+        return []
+
+    normalized = _normalize_edges(_orient_face_portrait(normalized))
+    normalized = collapse_closed_line_loops(normalized)
+
+    if rot:
+        _, _, face_w_mm, _ = _edge_bbox(normalized)
+        y_mm += face_w_mm
+
+    return [_translate_edge(edge, x_mm, y_mm, rot) for edge in normalized]
+
+
 # ---------------------------------------------------------------------------
 # Face resolution helper
 # ---------------------------------------------------------------------------
@@ -336,80 +387,9 @@ def build_sheet_dxf(
         if body is None:
             continue
 
-        try:
-            edge_data = project_body_orthographic(
-                body["shape"],
-                face_index,
-                reference_mode="selected",
-            )
-        except Exception:
+        placed = _prepare_placement_edges(body, face_index, x_mm, y_mm, rot)
+        if not placed:
             continue
-
-        raw_edges = edge_data.get("edges", [])
-        if not raw_edges:
-            continue
-
-        # Normalize to (0,0) origin — same as export_body_face does
-        from dxf_export import _compute_bbox_min
-        min_u, min_v = _compute_bbox_min(raw_edges)
-        normalized = []
-        for e in raw_edges:
-            def shift(pt: list[float]) -> list[float]:
-                return [pt[0] - min_u, pt[1] - min_v]
-
-            ne = dict(e)
-            if ne["type"] == "line":
-                ne = {**ne, "start": shift(ne["start"]), "end": shift(ne["end"])}
-            elif ne["type"] == "arc":
-                cx, cy = ne["center"]
-                ne = {
-                    **ne,
-                    "center": [cx - min_u, cy - min_v],
-                    "start": shift(ne["start"]),
-                    "end": shift(ne["end"]),
-                }
-            elif ne["type"] == "polyline":
-                ne = {**ne, "points": [shift(p) for p in ne["points"]]}
-            normalized.append(ne)
-
-        # Ensure face is portrait (U ≤ V) so that U maps to cut.w and V to cut.l,
-        # matching the optimizer's coordinate convention.
-        normalized = _orient_face_portrait(normalized)
-
-        # Re-normalize to (0,0) after portrait rotation.  The portrait rotation
-        # can shift arc cardinal extremes to negative coordinates (e.g. a rounded
-        # corner whose swept range changes after the 90° rotation), so we must
-        # re-anchor the geometry at the origin before placement.
-        post_min_u, post_min_v, _, _ = _edge_bbox(normalized)
-        if abs(post_min_u) > 1e-6 or abs(post_min_v) > 1e-6:
-            renorm: list[dict] = []
-            for ne2 in normalized:
-                ne2 = dict(ne2)
-                def _shift2(pt: list[float], _mu=post_min_u, _mv=post_min_v) -> list[float]:
-                    return [pt[0] - _mu, pt[1] - _mv]
-                if ne2["type"] == "line":
-                    ne2 = {**ne2, "start": _shift2(ne2["start"]), "end": _shift2(ne2["end"])}
-                elif ne2["type"] == "arc":
-                    acx, acy = ne2["center"]
-                    ne2 = {**ne2, "center": [acx - post_min_u, acy - post_min_v],
-                           "start": _shift2(ne2["start"]), "end": _shift2(ne2["end"])}
-                elif ne2["type"] == "polyline":
-                    ne2 = {**ne2, "points": [_shift2(p) for p in ne2["points"]]}
-                renorm.append(ne2)
-            normalized = renorm
-
-        normalized = collapse_closed_line_loops(normalized)
-
-        # Apply rotation + translation.
-        # 90° CW rotation (u,v)→(v,−u) maps the face's [0..face_w] u-range to
-        # [−face_w..0], so we must offset y by face_w_mm to keep the part in
-        # positive-coordinate space at the intended placement origin.
-        if rot:
-            _, _, face_w_mm, _ = _edge_bbox(normalized)
-            y_adj = y_mm + face_w_mm
-        else:
-            y_adj = y_mm
-        placed = [_translate_edge(e, x_mm, y_adj, rot) for e in normalized]
 
         # Write edges
         for e in placed:
@@ -490,7 +470,6 @@ def build_sheet_preview(
     for placement in placements:
         body_index = placement["body_index"]
         face_index = placement["face_index"]
-        body_name = placement.get("body_name", f"Body_{body_index}")
         x_mm = float(placement["x_mm"])
         y_mm = float(placement["y_mm"])
         rot = bool(placement.get("rot", False))
@@ -501,64 +480,9 @@ def build_sheet_preview(
         if body is None:
             continue
 
-        try:
-            edge_data = project_body_orthographic(
-                body["shape"],
-                face_index,
-                reference_mode="selected",
-            )
-        except Exception:
+        placed = _prepare_placement_edges(body, face_index, x_mm, y_mm, rot)
+        if not placed:
             continue
-
-        raw_edges = edge_data.get("edges", [])
-        if not raw_edges:
-            continue
-
-        from dxf_export import _compute_bbox_min
-        min_u, min_v = _compute_bbox_min(raw_edges)
-        normalized = []
-        for e in raw_edges:
-            def shift(pt: list[float]) -> list[float]:
-                return [pt[0] - min_u, pt[1] - min_v]
-            ne = dict(e)
-            if ne["type"] == "line":
-                ne = {**ne, "start": shift(ne["start"]), "end": shift(ne["end"])}
-            elif ne["type"] == "arc":
-                cx, cy = ne["center"]
-                ne = {**ne, "center": [cx - min_u, cy - min_v],
-                       "start": shift(ne["start"]), "end": shift(ne["end"])}
-            elif ne["type"] == "polyline":
-                ne = {**ne, "points": [shift(p) for p in ne["points"]]}
-            normalized.append(ne)
-
-        normalized = _orient_face_portrait(normalized)
-
-        post_min_u, post_min_v, _, _ = _edge_bbox(normalized)
-        if abs(post_min_u) > 1e-6 or abs(post_min_v) > 1e-6:
-            renorm: list[dict] = []
-            for ne2 in normalized:
-                ne2 = dict(ne2)
-                def _shift2(pt: list[float], _mu=post_min_u, _mv=post_min_v) -> list[float]:
-                    return [pt[0] - _mu, pt[1] - _mv]
-                if ne2["type"] == "line":
-                    ne2 = {**ne2, "start": _shift2(ne2["start"]), "end": _shift2(ne2["end"])}
-                elif ne2["type"] == "arc":
-                    acx, acy = ne2["center"]
-                    ne2 = {**ne2, "center": [acx - post_min_u, acy - post_min_v],
-                           "start": _shift2(ne2["start"]), "end": _shift2(ne2["end"])}
-                elif ne2["type"] == "polyline":
-                    ne2 = {**ne2, "points": [_shift2(p) for p in ne2["points"]]}
-                renorm.append(ne2)
-            normalized = renorm
-
-        normalized = collapse_closed_line_loops(normalized)
-
-        if rot:
-            _, _, face_w_mm, _ = _edge_bbox(normalized)
-            y_adj = y_mm + face_w_mm
-        else:
-            y_adj = y_mm
-        placed = [_translate_edge(e, x_mm, y_adj, rot) for e in normalized]
         all_edges.extend(
             [{**edge, "layer": map_layer_name(edge.get("layer"), layer_style=layer_style)} for edge in placed]
         )

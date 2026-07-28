@@ -19,10 +19,25 @@ export interface PersistedProjectStepFileRecord {
 }
 
 const stepSessionCache = new Map<string, string>();
-const STEP_STORAGE_ROOT = path.resolve(
-  process.cwd(),
-  process.env.STEP_STORAGE_DIR ?? 'data/step-files'
-);
+const configuredStorageRoot = process.env.STEP_STORAGE_DIR;
+const STEP_STORAGE_ROOT = configuredStorageRoot
+  ? path.isAbsolute(configuredStorageRoot)
+    ? configuredStorageRoot
+    : path.join(/* turbopackIgnore: true */ process.cwd(), configuredStorageRoot)
+  : path.join(/* turbopackIgnore: true */ process.cwd(), 'data', 'step-files');
+
+function resolveWithinStepStorage(relativePath: string): string {
+  const absolutePath = path.resolve(STEP_STORAGE_ROOT, relativePath);
+  const relativeToRoot = path.relative(STEP_STORAGE_ROOT, absolutePath);
+  if (
+    relativeToRoot === '..' ||
+    relativeToRoot.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativeToRoot)
+  ) {
+    throw new Error('Invalid STEP storage path');
+  }
+  return absolutePath;
+}
 
 function normalizeStepExtension(filename: string): string {
   const ext = path.extname(filename).toLowerCase();
@@ -30,11 +45,11 @@ function normalizeStepExtension(filename: string): string {
 }
 
 export function getStoredStepAbsolutePath(storagePath: string): string {
-  return path.resolve(STEP_STORAGE_ROOT, storagePath);
+  return resolveWithinStepStorage(storagePath);
 }
 
 export async function ensureProjectStepStorageDir(projectId: string): Promise<string> {
-  const projectDir = path.join(STEP_STORAGE_ROOT, projectId);
+  const projectDir = resolveWithinStepStorage(projectId);
   await mkdir(projectDir, { recursive: true });
   return projectDir;
 }
@@ -83,7 +98,7 @@ export async function deletePersistedProjectStepFile(storagePath: string): Promi
 
 export async function deletePersistedProjectStepDirectory(projectId: string): Promise<void> {
   try {
-    await rm(path.join(STEP_STORAGE_ROOT, projectId), { recursive: true, force: true });
+    await rm(resolveWithinStepStorage(projectId), { recursive: true, force: true });
   } catch {
     // Ignore cleanup failures when removing a project.
   }

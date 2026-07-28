@@ -47,6 +47,13 @@ export function StepPreviewPanel({
   const [error, setError] = useState<string | null>(null);
 
   const currentFace: StepFace | undefined = planarFaces[planarIdx];
+  const recommendedFace: StepFace | undefined =
+    topFaceIdx >= 0 ? planarFaces[topFaceIdx] : undefined;
+  const isLikelyEndFace =
+    currentFace !== undefined &&
+    recommendedFace !== undefined &&
+    currentFace.index !== recommendedFace.index &&
+    currentFace.area < recommendedFace.area * 0.25;
 
   // When 3D viewer forces a face selection, find it in planarFaces and jump to it
   useEffect(() => {
@@ -66,6 +73,8 @@ export function StepPreviewPanel({
     if (!currentFace) return;
     setLoading(true);
     setError(null);
+    setEdgeData(null);
+    setFaceDims(null);
     try {
       const res = await fetch(`/api/v1/step/${sessionId}/preview`, {
         method: 'POST',
@@ -91,7 +100,7 @@ export function StepPreviewPanel({
     } finally {
       setLoading(false);
     }
-  }, [sessionId, body.index, currentFace]);
+  }, [sessionId, body.index, currentFace, onFaceDims]);
 
   useEffect(() => {
     loadPreview();
@@ -103,6 +112,11 @@ export function StepPreviewPanel({
 
   const prev = () => { setPlanarIdx((i) => (i - 1 + planarFaces.length) % planarFaces.length); onFaceNavigated?.(); };
   const next = () => { setPlanarIdx((i) => (i + 1) % planarFaces.length); onFaceNavigated?.(); };
+  const useRecommendedFace = () => {
+    if (topFaceIdx < 0) return;
+    setPlanarIdx(topFaceIdx);
+    onFaceNavigated?.();
+  };
 
   const dims = faceDims ?? body.bbox_mm;
   const dimLabel = units === 'mm' ? 'mm' : 'in';
@@ -135,15 +149,21 @@ export function StepPreviewPanel({
               </span>
               <div className="flex gap-1">
                 <button
+                  type="button"
                   onClick={prev}
                   disabled={planarFaces.length <= 1}
+                  aria-label="Previous planar face"
+                  title="Previous planar face"
                   className="px-2 py-0.5 text-xs bg-slate-100 rounded hover:bg-slate-200 disabled:opacity-40"
                 >
                   ◀
                 </button>
                 <button
+                  type="button"
                   onClick={next}
                   disabled={planarFaces.length <= 1}
+                  aria-label="Next planar face"
+                  title="Next planar face"
                   className="px-2 py-0.5 text-xs bg-slate-100 rounded hover:bg-slate-200 disabled:opacity-40"
                 >
                   ▶
@@ -162,6 +182,19 @@ export function StepPreviewPanel({
                     {fmt(dims[0], units)} × {fmt(dims[1], units)} × {fmt(dims[2], units)} {dimLabel}
                   </p>
                 )}
+              </div>
+            )}
+
+            {isLikelyEndFace && (
+              <div className="flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-900">
+                <span>This looks like a small end face, not the main cut outline.</span>
+                <button
+                  type="button"
+                  onClick={useRecommendedFace}
+                  className="shrink-0 rounded bg-amber-100 px-2 py-1 font-medium hover:bg-amber-200"
+                >
+                  Use largest face
+                </button>
               </div>
             )}
           </>

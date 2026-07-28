@@ -114,7 +114,7 @@ function TreeLevel({
           return (
             <div key={`body-${node.stateIdx}`} style={{ paddingLeft: `${depth * 14}px` }}>
               <StepBodyRow
-                body={bs.body} included={bs.included} name={bs.name} confirmed={bs.confirmed}
+                included={bs.included} name={bs.name} confirmed={bs.confirmed}
                 selected={node.stateIdx === selectedIndex}
                 onSelect={() => onSelect(node.stateIdx)}
                 onToggle={() => onToggle(node.stateIdx)}

@@ -21,7 +21,6 @@ export interface StepFace {
 }
 
 interface Props {
-  body: StepBody;
   included: boolean;
   name: string;
   selected: boolean;
@@ -31,7 +30,7 @@ interface Props {
   onRename: (name: string) => void;
 }
 
-export function StepBodyRow({ body, included, name, selected, confirmed, onSelect, onToggle, onRename }: Props) {
+export function StepBodyRow({ included, name, selected, confirmed, onSelect, onToggle, onRename }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
   const inputRef = useRef<HTMLInputElement>(null);

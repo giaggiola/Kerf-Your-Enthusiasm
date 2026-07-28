@@ -1,44 +1,69 @@
-"""
-Tests for the projection pipeline using test.step.
-
-test.step is a single solid body ("Left Side") with these characteristics
-when projected along face 0's normal (X-axis):
-
-  depth  0.000 mm : 21 coplanar faces (1 large outer rect + 20 small circular holes)
-                    → PROFILE layer: 4 line edges (outer rectangle)
-                    → HOLES layer:   20 edges (circles/arcs for the holes)
-
-  depth -10.668 mm: 1 face (rectangular step floor, 4 line edges)
-                    → DEPTH_10.668mm layer: 4 line edges
-
-The opposite outside face at full stock thickness is intentionally excluded
-from DEPTH layers, because it is not a pocket floor.
-
-Total: 28 edges across 3 layers.
-
-Key behaviours verified:
-  1. Correct edge counts per layer
-  2. Clicking any coplanar face (0 or any small hole face) yields identical output
-  3. Clicking a deep face (23) yields same layers and counts from its perspective
-  4. DXF export runs without error and produces a valid file
-  5. DXF bounding box is normalized to start at (0, 0)
-  6. No duplicate edges (deduplication by midpoint)
-"""
+"""Self-contained regression tests for the projection and DXF pipelines."""
 from __future__ import annotations
-import os
 import math
+import os
 import tempfile
 import pytest
 import cadquery as cq
 
-# Path to test fixture
-STEP_FILE = os.path.join(os.path.dirname(__file__), "..", "test.step")
-
 
 @pytest.fixture(scope="module")
 def solid():
-    shape = cq.importers.importStep(STEP_FILE)
-    return shape.val()
+    """Panel with 20 through-holes and one 10.668 mm blind rectangular pocket."""
+    hole_centers = [
+        (20 + column * 30, 30 + row * 45)
+        for row in range(4)
+        for column in range(5)
+    ]
+    return (
+        cq.Workplane("XY")
+        .box(180, 180, 19.05, centered=(False, False, False))
+        .faces(">Z")
+        .workplane()
+        .pushPoints(hole_centers)
+        .hole(8)
+        .faces(">Z")
+        .workplane()
+        .rect(30, 20)
+        .cutBlind(-10.668)
+        .val()
+    )
+
+
+@pytest.fixture(scope="module")
+def top_face_index(solid):
+    from OCP.BRepAdaptor import BRepAdaptor_Surface
+    from OCP.GeomAbs import GeomAbs_Plane
+
+    candidates = []
+    for index, face in enumerate(solid.Faces()):
+        adaptor = BRepAdaptor_Surface(face.wrapped)
+        if adaptor.GetType() != GeomAbs_Plane:
+            continue
+        plane = adaptor.Plane()
+        if abs(plane.Axis().Direction().Z()) > 0.999:
+            candidates.append((plane.Location().Z(), face.Area(), index))
+
+    assert candidates
+    return max(candidates)[2]
+
+
+@pytest.fixture(scope="module")
+def parallel_face_indices(solid, top_face_index):
+    from OCP.BRepAdaptor import BRepAdaptor_Surface
+    from OCP.GeomAbs import GeomAbs_Plane
+
+    selected = BRepAdaptor_Surface(solid.Faces()[top_face_index].wrapped)
+    normal = selected.Plane().Axis().Direction()
+    indices = []
+    for index, face in enumerate(solid.Faces()):
+        adaptor = BRepAdaptor_Surface(face.wrapped)
+        if (
+            adaptor.GetType() == GeomAbs_Plane
+            and abs(adaptor.Plane().Axis().Direction().Dot(normal)) > 0.9999
+        ):
+            indices.append(index)
+    return indices
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -78,52 +103,37 @@ def normalized_line(edge: dict) -> tuple[tuple[float, float], tuple[float, float
 
 class TestProjectBodyOrthographic:
 
-    def test_face0_layer_counts(self, solid):
-        """Face 0 → 4 PROFILE + 20 HOLES + 4 DEPTH_10.668mm."""
+    def test_machining_face_layer_counts(self, solid, top_face_index):
         from projection import project_body_orthographic
-        result = project_body_orthographic(solid, 0)
+        result = project_body_orthographic(solid, top_face_index)
         counts = layer_counts(result["edges"])
 
-        assert counts.get("PROFILE", 0) == 4,  f"Expected 4 PROFILE edges, got {counts}"
+        assert counts.get("PROFILE", 0) == 6,  f"Expected 6 PROFILE edges, got {counts}"
         assert counts.get("HOLES", 0) == 20,    f"Expected 20 HOLES edges, got {counts}"
         assert counts.get("DEPTH_10.668mm", 0) == 4, f"Expected 4 DEPTH_10.668mm edges, got {counts}"
         assert counts.get("DEPTH_19.050mm", 0) == 0, f"Back face should not be exported as DEPTH: {counts}"
 
-    def test_face0_total_edge_count(self, solid):
-        """Total edges for face 0 projection = 28."""
+    def test_machining_face_total_edge_count(self, solid, top_face_index):
         from projection import project_body_orthographic
-        result = project_body_orthographic(solid, 0)
-        assert len(result["edges"]) == 28, f"Expected 28 total edges, got {len(result['edges'])}"
+        result = project_body_orthographic(solid, top_face_index)
+        assert len(result["edges"]) == 30, f"Expected 30 total edges, got {len(result['edges'])}"
 
-    def test_coplanar_faces_produce_identical_output(self, solid):
-        """Clicking face 0 or any coplanar small face (e.g. face 1) must yield
-        identical edge counts — the projection is defined by the plane, not by
-        which face was clicked."""
+    def test_parallel_faces_produce_identical_output(
+        self, solid, top_face_index, parallel_face_indices
+    ):
         from projection import project_body_orthographic
-        r0 = project_body_orthographic(solid, 0)
-        r1 = project_body_orthographic(solid, 1)   # a small hole face at depth 0
-
-        counts0 = layer_counts(r0["edges"])
-        counts1 = layer_counts(r1["edges"])
-        assert counts0 == counts1, (
-            f"Different layer counts when clicking face 0 vs face 1:\n"
-            f"  face 0: {counts0}\n  face 1: {counts1}"
+        reference = layer_counts(
+            project_body_orthographic(solid, top_face_index)["edges"]
         )
-
-    def test_all_depth0_coplanar_faces_same_output(self, solid):
-        """All 21 faces at depth 0 must produce the same layer counts."""
-        from projection import project_body_orthographic
-        # Faces 0–19 and 21 are all at depth 0 (face 20 is non-planar or different normal)
-        depth0_faces = list(range(0, 20)) + [21]
-        ref = layer_counts(project_body_orthographic(solid, 0)["edges"])
-        for fi in depth0_faces[1:]:
-            counts = layer_counts(project_body_orthographic(solid, fi)["edges"])
-            assert counts == ref, (
-                f"Face {fi} at depth 0 produced different counts than face 0:\n"
-                f"  expected: {ref}\n  got: {counts}"
+        assert len(parallel_face_indices) >= 2
+        for face_index in parallel_face_indices:
+            counts = layer_counts(project_body_orthographic(solid, face_index)["edges"])
+            assert counts == reference, (
+                f"Face {face_index} produced different counts:\n"
+                f"  expected: {reference}\n  got: {counts}"
             )
 
-    def test_no_duplicate_edges(self, solid):
+    def test_no_duplicate_edges(self, solid, top_face_index):
         """No two edges should share the same 3D midpoint — the 3D dedup in
         project_body_orthographic must eliminate shared boundary curves.
         Note: 2D midpoints CAN legitimately coincide (edges at different depths
@@ -134,31 +144,86 @@ class TestProjectBodyOrthographic:
 
         # Re-run projection with debug OFF and verify the depth-0 wire count did
         # not balloon from missed deduplication.
-        result = project_body_orthographic(solid, 0)
+        result = project_body_orthographic(solid, top_face_index)
         profile_holes = sum(1 for e in result["edges"] if e["layer"] in ("PROFILE","HOLES"))
-        # Depth-0 faces have 24 wires total (4 PROFILE + 20 HOLES).
+        # The generated fixture has 6 split profile segments + 20 holes.
         # Each shared curve appears on 2 faces but must appear once in output.
-        assert profile_holes == 24, (
-            f"Expected 24 edges at depth 0 (4 PROFILE + 20 HOLES), got {profile_holes}"
+        assert profile_holes == 26, (
+            f"Expected 26 edges at depth 0 (6 PROFILE + 20 HOLES), got {profile_holes}"
         )
 
-    def test_profile_edges_are_lines(self, solid):
-        """The outer profile boundary of this part is a rectangle — all 4 PROFILE
+    def test_profile_edges_are_lines(self, solid, top_face_index):
+        """The outer profile boundary of this part is a rectangle — all PROFILE
         edges must be lines."""
         from projection import project_body_orthographic
-        result = project_body_orthographic(solid, 0)
+        result = project_body_orthographic(solid, top_face_index)
         profile = [e for e in result["edges"] if e.get("layer") == "PROFILE"]
         for e in profile:
             assert e["type"] == "line", f"Expected line in PROFILE, got {e['type']}"
 
-    def test_holes_are_closed_curves(self, solid):
-        """All hole features in test.step are circular.
+    def test_bspline_outer_profile_survives_boundary_classification(self):
+        """Curved outer boundaries must be classified from the exact curve.
+
+        A chord midpoint from the projected polyline can be far enough inside a
+        convex B-spline that both classifier probes land inside the face. That
+        used to drop the whole curved edge and leave a zero-width projection.
+        """
+        from OCP.BRepAdaptor import BRepAdaptor_Surface
+        from OCP.GeomAbs import GeomAbs_Plane
+        from projection import project_body_orthographic
+
+        shape = (
+            cq.Workplane("XY")
+            .moveTo(0, 0)
+            .spline([(25, 80), (75, 95), (120, 0)])
+            .lineTo(0, 0)
+            .close()
+            .extrude(19.05)
+            .val()
+        )
+
+        top_idx = None
+        top_z = float("-inf")
+        for idx, face in enumerate(shape.Faces()):
+            adaptor = BRepAdaptor_Surface(face.wrapped)
+            if adaptor.GetType() != GeomAbs_Plane:
+                continue
+            plane = adaptor.Plane()
+            normal = plane.Axis().Direction()
+            origin = plane.Location()
+            if abs(normal.Z()) > 0.999 and origin.Z() > top_z:
+                top_z = origin.Z()
+                top_idx = idx
+
+        assert top_idx is not None
+
+        result = project_body_orthographic(shape, top_idx, reference_mode="selected")
+        profile = [edge for edge in result["edges"] if edge.get("layer") == "PROFILE"]
+
+        assert sum(edge["type"] == "line" for edge in profile) >= 1
+        assert sum(edge["type"] == "polyline" for edge in profile) == 1
+        assert all(not any(key.startswith("_") for key in edge) for edge in profile)
+
+        profile_points = []
+        for edge in profile:
+            if edge["type"] == "line":
+                profile_points.extend([edge["start"], edge["end"]])
+            else:
+                profile_points.extend(edge["points"])
+
+        xs = [point[0] for point in profile_points]
+        ys = [point[1] for point in profile_points]
+        assert max(xs) - min(xs) > 100
+        assert max(ys) - min(ys) > 70
+
+    def test_holes_are_closed_curves(self, solid, top_face_index):
+        """All hole features in the generated panel are circular.
         Depending on the STEP file encoding they may come out as GeomAbs_Circle
         (type='arc') or BSpline (type='polyline'). Either is acceptable as long
         as the shape is closed (first point ≈ last point for polylines, or
         is_full_circle=True for arcs)."""
         from projection import project_body_orthographic
-        result = project_body_orthographic(solid, 0)
+        result = project_body_orthographic(solid, top_face_index)
         holes = [e for e in result["edges"] if e.get("layer") == "HOLES"]
         assert len(holes) == 20, f"Expected 20 HOLES edges, got {len(holes)}"
         for e in holes:
@@ -175,18 +240,18 @@ class TestProjectBodyOrthographic:
                     f"Polyline in HOLES is not closed: first={pts[0]} last={pts[-1]}"
                 )
 
-    def test_depth_edges_are_lines(self, solid):
+    def test_depth_edges_are_lines(self, solid, top_face_index):
         """The pocket floors are rectangular — DEPTH_* edges must be lines."""
         from projection import project_body_orthographic
-        result = project_body_orthographic(solid, 0)
+        result = project_body_orthographic(solid, top_face_index)
         for e in result["edges"]:
             if e.get("layer", "").startswith("DEPTH_"):
                 assert e["type"] == "line", f"Expected line in {e['layer']}, got {e['type']}"
 
-    def test_plane_origin_and_normal_returned(self, solid):
+    def test_plane_origin_and_normal_returned(self, solid, top_face_index):
         """Result must include plane metadata."""
         from projection import project_body_orthographic
-        result = project_body_orthographic(solid, 0)
+        result = project_body_orthographic(solid, top_face_index)
         assert "plane_origin" in result
         assert "plane_normal" in result
         assert "plane_x_axis" in result
@@ -421,22 +486,22 @@ class TestProjectBodyOrthographic:
 
 class TestDxfExport:
 
-    def test_export_runs_without_error(self, solid):
+    def test_export_runs_without_error(self, solid, top_face_index):
         """Full pipeline: projection → DXF file written without exception."""
         from dxf_export import export_body_face
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = export_body_face(solid, 0, tmpdir, "LeftSide")
+            path = export_body_face(solid, top_face_index, tmpdir, "LeftSide")
             assert os.path.exists(path), "DXF file not created"
             assert os.path.getsize(path) > 0, "DXF file is empty"
 
-    def test_dxf_has_correct_layers(self, solid):
+    def test_dxf_has_correct_layers(self, solid, top_face_index):
         """DXF entities must use layers: PROFILE, HOLES, DEPTH_10.668mm.
         Note: ezdxf's doc.layers only shows explicitly-created layer-table entries.
         We check entity .dxf.layer directly, which is the authoritative source."""
         import ezdxf
         from dxf_export import export_body_face
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = export_body_face(solid, 0, tmpdir, "LeftSide")
+            path = export_body_face(solid, top_face_index, tmpdir, "LeftSide")
             doc = ezdxf.readfile(path)
             entity_layers = {ent.dxf.layer for ent in doc.modelspace()}
             assert "PROFILE"        in entity_layers, f"Missing PROFILE, have: {entity_layers}"
@@ -444,12 +509,12 @@ class TestDxfExport:
             assert "DEPTH_10.668mm" in entity_layers, f"Missing DEPTH_10.668mm, have: {entity_layers}"
             assert "DEPTH_19.050mm" not in entity_layers, f"Back face should not be exported as DEPTH: {entity_layers}"
 
-    def test_dxf_normalized_to_origin(self, solid):
+    def test_dxf_normalized_to_origin(self, solid, top_face_index):
         """All DXF coordinates must be >= 0 (bbox normalized to start at 0,0)."""
         import ezdxf
         from dxf_export import export_body_face
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = export_body_face(solid, 0, tmpdir, "LeftSide")
+            path = export_body_face(solid, top_face_index, tmpdir, "LeftSide")
             doc = ezdxf.readfile(path)
             msp = doc.modelspace()
             min_x, min_y = float("inf"), float("inf")
@@ -466,24 +531,35 @@ class TestDxfExport:
             assert min_x >= -0.01, f"DXF not normalized: min_x={min_x}"
             assert min_y >= -0.01, f"DXF not normalized: min_y={min_y}"
 
-    def test_dxf_entity_count(self, solid):
-        """DXF must contain 28 entities (matching the 28 projected edges)."""
+    def test_dxf_entity_count(self, solid, top_face_index):
+        """DXF entity count must match the generated fixture's projected edges."""
         import ezdxf
         from dxf_export import export_body_face
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = export_body_face(solid, 0, tmpdir, "LeftSide")
+            path = export_body_face(solid, top_face_index, tmpdir, "LeftSide")
             doc = ezdxf.readfile(path)
             entities = list(doc.modelspace())
-            assert len(entities) == 28, f"Expected 28 DXF entities, got {len(entities)}"
+            # Closed line loops are collapsed into one LWPOLYLINE each:
+            # 20 circles + 1 profile + 1 pocket floor.
+            assert len(entities) == 22, f"Expected 22 DXF entities, got {len(entities)}"
 
-    def test_coplanar_click_same_dxf(self, solid):
-        """Clicking face 0 or face 5 (both at depth 0) must produce DXF files
-        with the same entity count."""
+    def test_opposite_face_hides_reverse_side_pocket(
+        self, solid, top_face_index, parallel_face_indices
+    ):
+        """Selected-face export must not expose a pocket from the reverse side."""
         import ezdxf
         from dxf_export import export_body_face
+        bottom_face_index = max(
+            (index for index in parallel_face_indices if index != top_face_index),
+            key=lambda index: solid.Faces()[index].Area(),
+        )
         with tempfile.TemporaryDirectory() as tmpdir:
-            p0 = export_body_face(solid, 0, tmpdir, "face0")
-            p5 = export_body_face(solid, 5, tmpdir, "face5")
-            c0 = len(list(ezdxf.readfile(p0).modelspace()))
-            c5 = len(list(ezdxf.readfile(p5).modelspace()))
-            assert c0 == c5, f"Different entity counts: face0={c0}, face5={c5}"
+            path = export_body_face(solid, bottom_face_index, tmpdir, "bottom")
+            layers = {
+                entity.dxf.layer
+                for entity in ezdxf.readfile(path).modelspace()
+            }
+
+        assert "PROFILE" in layers
+        assert "HOLES" in layers
+        assert not any(layer.startswith("DEPTH_") for layer in layers)

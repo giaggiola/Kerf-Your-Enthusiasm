@@ -10,8 +10,71 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  frontend-quality:
+    name: Frontend tests + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run optimizer regressions
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build production app
+        run: |
+          mkdir -p "$(dirname "$DATABASE_PATH")"
+          npm run build
+        env:
+          BETTER_AUTH_SECRET: build-time-placeholder-not-a-real-secret
+          DATABASE_PATH: ${{ runner.temp }}/kerf-build/app.db
+
+  backend-quality:
+    name: Backend projection tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install OpenCASCADE runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgl1 libglu1-mesa libxrender1 libxext6 libsm6
+
+      - name: Install backend dependencies
+        run: pip install -r requirements-dev.txt
+        working-directory: backend
+
+      - name: Run projection and export regressions
+        run: pytest -q
+        working-directory: backend
+
   deploy:
     name: Pull + redeploy
+    needs: [frontend-quality, backend-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

@@ -401,7 +401,7 @@ export default function LayoutEditor({
                   {result.sheets.length === 1 && sheet.name && (
                     <span className="font-medium text-slate-500">{sheet.name}</span>
                   )}
-                  <span className="tabular-nums">{sheet.w}" × {sheet.l}"</span>
+                  <span className="tabular-nums">{sheet.w}&quot; × {sheet.l}&quot;</span>
 
                   {/* Utilization bar */}
                   <div className="flex items-center gap-1">
@@ -552,7 +552,7 @@ export default function LayoutEditor({
                 <div key={i} className="flex items-baseline justify-between text-xs">
                   <span className="text-slate-600 font-medium truncate pr-2">{r.name}</span>
                   <span className="text-slate-400 tabular-nums shrink-0">
-                    {r.w}" × {r.l}"
+                    {r.w}&quot; × {r.l}&quot;
                     <span className="ml-2 font-semibold text-slate-600">× {r.count}</span>
                   </span>
                 </div>
@@ -565,7 +565,6 @@ export default function LayoutEditor({
       {/* Context menu */}
       {contextMenu && (
         <ContextMenu
-          targetKey={contextMenu.key}
           clientX={contextMenu.clientX}
           clientY={contextMenu.clientY}
           isPinned={overrides[contextMenu.key]?.pinned ?? false}

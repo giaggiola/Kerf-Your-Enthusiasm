@@ -23,16 +23,16 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 # Placeholders so the build succeeds — real values are injected at runtime.
 # The secret must be at least 32 characters or Better-Auth throws while Next is
-# collecting page data. It is deliberately not a real secret: an ENV here would
-# be baked into the image, and it also shadows the build ARG Coolify injects.
-ENV BETTER_AUTH_SECRET=build-time-placeholder-not-a-real-secret
+# collecting page data. It is deliberately scoped to the build command below,
+# rather than persisted in the image's environment.
 ENV DATABASE_PATH=/data/app.db
 
 # Next evaluates every route module to collect page data, and those modules
 # import src/db, which opens DATABASE_PATH at import time. The directory has to
 # exist for the build to get that far — this throwaway copy is not the one the
 # app runs against; that lives on the volume mounted at /data.
-RUN mkdir -p /data && npm run build
+RUN mkdir -p /data \
+ && BETTER_AUTH_SECRET=build-time-placeholder-not-a-real-secret npm run build
 
 # ── Stage 3: production runner ────────────────────────────────────────────────
 FROM node:20-alpine AS runner
@@ -62,7 +62,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/drizzle-orm  ./node_
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/esbuild         ./node_modules/esbuild
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@esbuild        ./node_modules/@esbuild
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/esbuild-register ./node_modules/esbuild-register
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@esbuild-kit    ./node_modules/@esbuild-kit
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@drizzle-team   ./node_modules/@drizzle-team
 
