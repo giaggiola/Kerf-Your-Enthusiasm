@@ -60,6 +60,7 @@ interface StoredProjectStepFile {
 }
 
 interface ProjectStepWorkspaceResponse {
+  name?: string;
   units?: UnitSystem | null;
   stepActiveFileId?: string | null;
   stepFiles?: StoredProjectStepFile[];
@@ -80,6 +81,7 @@ export default function StepWorkspacePage({ params }: { params: Promise<{ id: st
   const [meshLoading, setMeshLoading] = useState(false);
 
   // ── UI state ──────────────────────────────────────────────────────────────
+  const [projectName, setProjectName] = useState('Project');
   const [projectUnits, setProjectUnits] = useState<UnitSystem>('in');
   const [units, setUnits] = useState<UnitSystem>('in');
   const [uploading, setUploading] = useState(false);
@@ -192,6 +194,7 @@ export default function StepWorkspacePage({ params }: { params: Promise<{ id: st
         const data = await response.json() as ProjectStepWorkspaceResponse;
         if (cancelled) return;
 
+        setProjectName(data.name?.trim() || 'Project');
         const nextUnits = (data.units as UnitSystem | null) ?? 'in';
         setProjectUnits(nextUnits);
         setUnits(nextUnits);
@@ -525,7 +528,7 @@ export default function StepWorkspacePage({ params }: { params: Promise<{ id: st
   };
 
   // ── Resizable right panel ─────────────────────────────────────────────────
-  const [previewWidth, setPreviewWidth] = useState(288);
+  const [previewWidth, setPreviewWidth] = useState(360);
   const sepDragging = useRef(false);
   const onSepPointerDown = (e: React.PointerEvent) => {
     sepDragging.current = true;
@@ -544,50 +547,65 @@ export default function StepWorkspacePage({ params }: { params: Promise<{ id: st
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onClick={() => fileInputRef.current?.click()}
-      className={`border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-colors ${
-        dragOver ? 'border-slate-500 bg-slate-50' : 'border-slate-300 hover:border-slate-400'
+      className={`group rounded-2xl border border-dashed px-6 py-14 text-center cursor-pointer transition-all ${
+        dragOver
+          ? 'border-[var(--accent)] bg-[var(--accent-soft)] shadow-[0_0_0_4px_rgba(215,104,54,0.08)]'
+          : 'border-[#c9cdc6] bg-white hover:border-[var(--accent)] hover:bg-[#fffaf6]'
       }`}
     >
       <input ref={fileInputRef} type="file" accept=".step,.stp" multiple className="hidden" onChange={onFileInput} />
-      <svg className="w-12 h-12 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-      </svg>
+      <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-dark)] transition-transform group-hover:-translate-y-0.5">
+        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 16V4m0 0L8 8m4-4 4 4M5 14v5h14v-5" />
+        </svg>
+      </div>
       {uploading ? (
-        <p className="text-slate-600">{uploadProgress ?? 'Parsing STEP files…'}</p>
+        <>
+          <p className="font-semibold text-[var(--ink)]">{uploadProgress ?? 'Parsing STEP files…'}</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">Complex assemblies can take a moment.</p>
+        </>
       ) : (
         <>
-          <p className="text-slate-700 font-medium">Drop one or more .step or .stp files here</p>
-          <p className="text-slate-400 text-sm mt-1">or click to browse and select multiple</p>
+          <p className="font-semibold text-[var(--ink)]">Drop STEP files here</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">or browse your computer · .step and .stp supported</p>
         </>
       )}
-      {uploadError && <p className="mt-3 text-red-600 text-sm">{uploadError}</p>}
+      {uploadError && <p className="mx-auto mt-4 max-w-md text-sm text-red-600">{uploadError}</p>}
     </div>
   );
 
   // ── Loading / empty states ────────────────────────────────────────────────
   if (restoring) {
     return (
-      <div className="flex items-center justify-center h-screen text-slate-400 text-sm gap-2">
-        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+      <div className="flex h-[calc(100vh-68px)] items-center justify-center gap-3 text-sm text-[var(--muted)]">
+        <svg className="h-5 w-5 animate-spin text-[var(--accent)]" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
         </svg>
-        Restoring session…
+        Restoring your STEP workspace…
       </div>
     );
   }
 
   if (sessions.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <Link href={`/projects/${id}`} className="text-slate-500 hover:text-slate-700">
-            &larr; Back to project
-          </Link>
-          <h1 className="text-2xl font-bold text-slate-900">Import STEP</h1>
+      <div className="mx-auto max-w-3xl px-5 py-10 sm:py-14">
+        <Link href={`/projects/${id}`} className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-[var(--muted)] hover:text-[var(--ink)]">
+          <span>←</span> {projectName}
+        </Link>
+        <div className="mb-8">
+          <p className="app-eyebrow">Step 1 of 3 · Import</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[var(--ink)]">Bring in your CAD parts</h1>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--muted)]">
+            Upload one part or a full assembly. Next, you&apos;ll review each body and choose the face that should lie on the sheet.
+          </p>
         </div>
         {dropzone}
+        <div className="mt-5 grid gap-3 text-xs text-[var(--muted)] sm:grid-cols-3">
+          <span className="flex items-center gap-2"><b className="flex h-5 w-5 items-center justify-center rounded-full bg-[#e5e8e2] text-[10px] text-[var(--ink)]">1</b> Upload STEP</span>
+          <span className="flex items-center gap-2"><b className="flex h-5 w-5 items-center justify-center rounded-full bg-[#e5e8e2] text-[10px] text-[var(--ink)]">2</b> Confirm cut faces</span>
+          <span className="flex items-center gap-2"><b className="flex h-5 w-5 items-center justify-center rounded-full bg-[#e5e8e2] text-[10px] text-[var(--ink)]">3</b> Optimize sheets</span>
+        </div>
       </div>
     );
   }
@@ -600,25 +618,87 @@ export default function StepWorkspacePage({ params }: { params: Promise<{ id: st
   const forcedFaceOccIndex = selectedFaceIndices[selectedBodyIdx];
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-white shrink-0">
+    <div className="flex h-[calc(100vh-68px)] flex-col overflow-hidden bg-[#f5f4f0]">
+      {/* Workspace header */}
+      <div className="shrink-0 border-b border-[var(--line)] bg-white">
+        <div className="flex min-h-[64px] items-center justify-between gap-4 px-4 lg:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link href={`/projects/${id}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--line)] text-[var(--muted)] hover:bg-black/[0.03] hover:text-[var(--ink)]" aria-label="Back to project">
+              ←
+            </Link>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-[var(--ink)]">{projectName}</p>
+              <p className="text-xs text-[var(--muted)]">Prepare CAD parts</p>
+            </div>
+          </div>
 
-        {/* Left: back link + file tabs */}
-        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-          <Link href={`/projects/${id}`} className="text-slate-500 hover:text-slate-700 text-sm shrink-0">
-            &larr; Project
-          </Link>
+          <div className="hidden items-center gap-2 text-xs lg:flex">
+            <span className="flex items-center gap-2 text-[var(--success)]">
+              <b className="flex h-6 w-6 items-center justify-center rounded-full bg-[#e4f0e9] text-[10px]">✓</b>
+              Import
+            </span>
+            <span className="h-px w-8 bg-[var(--line)]" />
+            <span className="flex items-center gap-2 font-semibold text-[var(--ink)]">
+              <b className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[10px] text-[var(--accent-dark)]">2</b>
+              Select faces
+            </span>
+            <span className="h-px w-8 bg-[var(--line)]" />
+            <span className="flex items-center gap-2 text-[var(--muted)]">
+              <b className="flex h-6 w-6 items-center justify-center rounded-full bg-[#eef0eb] text-[10px]">3</b>
+              Optimize
+            </span>
+          </div>
 
-          {/* Tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto min-w-0">
+          {addingNew ? (
+            <button
+              onClick={() => { setAddingNew(false); setUploadError(null); }}
+              className="app-button-secondary min-h-9 py-1.5 text-xs"
+            >
+              Cancel upload
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="hidden overflow-hidden rounded-lg border border-[var(--line)] text-xs sm:flex">
+                {(['mm', 'in'] as UnitSystem[]).map((u) => (
+                  <button key={u} onClick={() => setUnits(u)}
+                    className={`px-2.5 py-2 transition-colors ${units === u ? 'bg-[var(--ink)] text-white' : 'text-[var(--muted)] hover:bg-black/[0.03]'}`}>
+                    {u}
+                  </button>
+                ))}
+              </div>
+              <div className="hidden md:block">
+                <button
+                  onClick={handleExportAllDxfs}
+                  disabled={exportingAll || !bodyStates.some((b) => b.included)}
+                  className="app-button-secondary min-h-9 py-1.5 text-xs"
+                >
+                  {exportingAll ? 'Exporting…' : 'Export DXFs'}
+                </button>
+              </div>
+              <button
+                onClick={handleAddToCutList}
+                disabled={adding || confirmedCount === 0}
+                className="app-button-primary min-h-9 py-1.5 text-xs"
+              >
+                <span className="sm:hidden">{adding ? 'Adding…' : 'Add parts'}</span>
+                <span className="hidden sm:inline">{adding ? 'Adding…' : `Add ${confirmedCount || ''} part${confirmedCount === 1 ? '' : 's'} to project`}</span>
+                <span>→</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* File tabs */}
+        <div className="flex min-h-11 items-center gap-3 border-t border-[var(--line)] px-4 lg:px-6">
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">Files</span>
+          <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto py-1.5">
             {sessions.map((s, i) => (
               <div
                 key={s.sessionId}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-xs shrink-0 select-none transition-colors ${
+                className={`flex shrink-0 select-none items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${
                   i === activeIdx && !addingNew
-                    ? 'bg-slate-800 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer'
+                    ? 'border-[var(--ink)] bg-[var(--ink)] text-white'
+                    : 'cursor-pointer border-[var(--line)] bg-white text-[var(--muted)] hover:border-[#c5c9c2]'
                 }`}
               >
                 <span
@@ -629,7 +709,7 @@ export default function StepWorkspacePage({ params }: { params: Promise<{ id: st
                 </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleRemoveSession(i); }}
-                  className={`ml-0.5 rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none transition-colors ${
+                  className={`ml-1 flex h-4 w-4 items-center justify-center rounded-full leading-none transition-colors ${
                     i === activeIdx && !addingNew ? 'hover:bg-white/20' : 'hover:bg-slate-300'
                   }`}
                   title="Remove this STEP"
@@ -642,88 +722,53 @@ export default function StepWorkspacePage({ params }: { params: Promise<{ id: st
             {/* Add-new tab */}
             <button
               onClick={() => { setAddingNew(true); setUploadError(null); }}
-              className={`px-2 py-1 rounded text-xs shrink-0 transition-colors ${
+              className={`shrink-0 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
                 addingNew
-                  ? 'bg-slate-800 text-white'
-                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  ? 'border-[var(--ink)] bg-[var(--ink)] text-white'
+                  : 'border-dashed border-[#bdc2ba] text-[var(--accent-dark)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]'
               }`}
               title="Load one or more STEP files"
             >
-              + STEP
+              + Add STEP
             </button>
           </div>
 
           {!addingNew && meshLoading && (
-            <span className="text-xs text-slate-400 animate-pulse shrink-0">Tessellating…</span>
+            <span className="shrink-0 animate-pulse text-xs text-[var(--muted)]">Building 3D preview…</span>
           )}
         </div>
-
-        {/* Right: controls */}
-        {addingNew ? (
-          <button
-            onClick={() => { setAddingNew(false); setUploadError(null); }}
-            className="text-sm text-slate-500 hover:text-slate-700 shrink-0"
-          >
-            Cancel
-          </button>
-        ) : (
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex rounded border border-slate-200 overflow-hidden text-xs">
-              {(['mm', 'in'] as UnitSystem[]).map((u) => (
-                <button key={u} onClick={() => setUnits(u)}
-                  className={`px-2 py-1 transition-colors ${units === u ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
-                  {u}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={handleExportAllDxfs}
-              disabled={exportingAll || !bodyStates.some((b) => b.included)}
-              className="px-3 py-1.5 text-xs border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-40"
-            >
-              {exportingAll ? 'Exporting…' : '↓ Export All DXFs'}
-            </button>
-            <button
-              onClick={handleAddToCutList}
-              disabled={adding || confirmedCount === 0}
-              className="px-3 py-1.5 text-sm bg-slate-800 text-white rounded hover:bg-slate-700 disabled:opacity-40"
-            >
-              {adding ? 'Adding…' : `Add ${confirmedCount > 0 ? confirmedCount : ''} to Cut List →`}
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Success banner */}
       {addedCount !== null && !addingNew && (
-        <div className="shrink-0 bg-emerald-50 border-b border-emerald-200 px-4 py-2.5 flex items-center justify-between">
+        <div className="flex shrink-0 items-center justify-between border-b border-emerald-200 bg-emerald-50 px-4 py-2.5 lg:px-6">
           <div className="flex items-center gap-2">
             <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
             <span className="text-sm text-emerald-800 font-medium">
-              {addedCount} part{addedCount !== 1 ? 's' : ''} added to the cut list.
+              {addedCount} part{addedCount !== 1 ? 's are' : ' is'} ready in your project.
             </span>
           </div>
           <button
             onClick={() => router.push(`/projects/${id}`)}
             className="text-sm font-medium text-emerald-800 hover:text-emerald-950"
           >
-            Go to project →
+            Continue to stock &amp; layout →
           </button>
         </div>
       )}
 
       {/* "Adding new" dropzone */}
       {addingNew ? (
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="max-w-lg w-full">{dropzone}</div>
+        <div className="flex flex-1 items-center justify-center p-8">
+          <div className="w-full max-w-xl">{dropzone}</div>
         </div>
       ) : (
         /* Three-column workspace */
-        <div className="flex flex-1 min-h-0">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
           {/* Left: Parts tree */}
-          <div className="w-52 shrink-0 border-r border-slate-200 overflow-hidden">
+          <div className="h-44 w-full shrink-0 overflow-hidden border-b border-[var(--line)] bg-white lg:h-auto lg:w-64 lg:border-b-0 lg:border-r">
             <StepSidebar
               bodyStates={bodyStates}
               selectedIndex={selectedBodyIdx}
@@ -747,7 +792,7 @@ export default function StepWorkspacePage({ params }: { params: Promise<{ id: st
           </div>
 
           {/* Center: 3D viewer */}
-          <div className="flex-1 min-w-0 relative">
+          <div className="relative min-h-[360px] min-w-0 flex-1 bg-[#eeefeb]">
             {activeMeshData.length > 0 ? (
               <StepViewer3D
                 meshData={activeMeshData}
@@ -772,15 +817,21 @@ export default function StepWorkspacePage({ params }: { params: Promise<{ id: st
               </div>
             )}
             {activeMeshData.length > 0 && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-xs text-slate-400 bg-white/70 rounded px-2 py-1 pointer-events-none whitespace-nowrap">
-                Drag: orbit · Shift/Right-drag: pan · Scroll: zoom · Click face: select
+              <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-black/5 bg-white/85 px-3 py-1.5 text-[11px] text-[var(--muted)] shadow-sm backdrop-blur">
+                Orbit: drag · Pan: shift-drag · Select: click a face
+              </div>
+            )}
+            {activeMeshData.length > 0 && (
+              <div className="pointer-events-none absolute left-4 top-4 max-w-56 rounded-xl border border-white/70 bg-white/85 p-3 shadow-sm backdrop-blur">
+                <p className="text-xs font-semibold text-[var(--ink)]">Choose the sheet face</p>
+                <p className="mt-1 text-[11px] leading-4 text-[var(--muted)]">Click the broad, flat face that should be cut from your stock.</p>
               </div>
             )}
           </div>
 
           {/* Drag separator */}
           <div
-            className="w-[5px] shrink-0 cursor-col-resize flex items-center justify-center bg-slate-100 hover:bg-indigo-200 active:bg-indigo-400 transition-colors select-none group/sep"
+            className="group/sep hidden w-[5px] shrink-0 cursor-col-resize select-none items-center justify-center bg-[#e5e6e1] transition-colors hover:bg-[#ecc4ae] active:bg-[var(--accent)] lg:flex"
             onPointerDown={onSepPointerDown}
             onPointerMove={onSepPointerMove}
             onPointerUp={onSepPointerUp}
@@ -788,19 +839,25 @@ export default function StepWorkspacePage({ params }: { params: Promise<{ id: st
           >
             <div className="flex flex-col gap-[3px] pointer-events-none">
               {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="w-[3px] h-[3px] rounded-full bg-slate-300 group-hover/sep:bg-indigo-400" />
+                <div key={i} className="h-[3px] w-[3px] rounded-full bg-[#b6bbb3] group-hover/sep:bg-[var(--accent)]" />
               ))}
             </div>
           </div>
 
           {/* Right: 2D face preview */}
-          <div style={{ width: previewWidth }} className="shrink-0 p-3 overflow-hidden flex flex-col border-l-0">
+          <div
+            style={{ '--preview-width': `${previewWidth}px` } as React.CSSProperties}
+            className="flex min-h-[420px] w-full shrink-0 flex-col overflow-hidden border-t border-[var(--line)] bg-white p-4 lg:min-h-0 lg:w-[var(--preview-width)] lg:border-t-0"
+          >
             {selectedBody ? (
               <>
-                <div className="flex items-center gap-2 mb-2 shrink-0">
-                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider truncate flex-1">
-                    {bodyStates[selectedBodyIdx]?.name ?? selectedBody.name}
-                  </p>
+                <div className="mb-3 flex shrink-0 items-start gap-2 border-b border-[var(--line)] pb-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">Selected part</p>
+                    <p className="mt-1 truncate text-sm font-semibold text-[var(--ink)]">
+                      {bodyStates[selectedBodyIdx]?.name ?? selectedBody.name}
+                    </p>
+                  </div>
                   {!bodyStates[selectedBodyIdx]?.confirmed ? (
                     <button
                       onClick={() =>
@@ -810,16 +867,16 @@ export default function StepWorkspacePage({ params }: { params: Promise<{ id: st
                           ),
                         }))
                       }
-                      className="shrink-0 text-xs text-emerald-600 hover:text-emerald-800 font-medium"
+                      className="shrink-0 rounded-lg bg-[#e5f1ea] px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-[#d7e9df]"
                     >
-                      ✓ Confirm
+                      Confirm face
                     </button>
                   ) : (
-                    <span className="shrink-0 text-xs text-emerald-500 font-medium flex items-center gap-0.5">
+                    <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#e5f1ea] px-2 py-1 text-[10px] font-semibold text-emerald-700">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
-                      Confirmed
+                      Ready
                     </span>
                   )}
                 </div>

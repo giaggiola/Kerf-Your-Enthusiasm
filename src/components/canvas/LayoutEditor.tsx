@@ -255,10 +255,10 @@ export default function LayoutEditor({
   const selCount = selectedKeys.size;
 
   return (
-    <div className="flex flex-col rounded-xl overflow-hidden ring-1 ring-slate-200 bg-white">
+    <div className="flex min-h-full flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-[0_10px_30px_rgba(29,41,36,0.04)]">
 
       {/* ── Toolbar ─────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1.5 px-3 py-2 bg-white border-b border-slate-200 flex-shrink-0">
+      <div className="flex flex-shrink-0 items-center gap-1.5 border-b border-[var(--line)] bg-white px-3 py-2.5">
 
         {/* Undo / Redo */}
         <button
@@ -277,7 +277,7 @@ export default function LayoutEditor({
         <div className="w-px h-4 bg-slate-200 mx-0.5" />
 
         {/* Zoom */}
-        <div className="flex items-center text-xs text-slate-500 border border-slate-200 rounded-md overflow-hidden bg-slate-50">
+        <div className="flex items-center overflow-hidden rounded-lg border border-[var(--line)] bg-[#f7f7f4] text-xs text-[var(--muted)]">
           <button
             onClick={() => setZoom(z => Math.max(0.25, parseFloat((z - 0.25).toFixed(2))))}
             className="px-2 py-1 hover:bg-slate-100 hover:text-slate-800 transition-colors"
@@ -340,13 +340,13 @@ export default function LayoutEditor({
         {/* Re-optimize — primary CTA */}
         <button
           onClick={onReoptimize}
-          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm"
+            className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[var(--accent-dark)]"
         >↻ Re-optimize</button>
       </div>
 
       {/* ── Sheet grid — wrapping row layout on slate-100 surface ─── */}
-      <div className="overflow-auto bg-slate-100">
-        <div className="flex flex-wrap gap-6 p-5 min-w-fit">
+      <div className="overflow-auto bg-[#f2f2ee]">
+        <div className="flex min-w-fit flex-wrap gap-7 p-6">
           {result.sheets.map((sheet, i) => {
             const merged = mergedSheets[i];
             const conflicts = conflictSets[i];
@@ -371,7 +371,7 @@ export default function LayoutEditor({
                   style={{ width: canvasW, height: canvasH }}
                   className={`shadow-md ring-1 select-none flex-shrink-0 transition-shadow ${
                     draggingKey && dropTargetSheet === i
-                      ? 'ring-2 ring-indigo-400 shadow-indigo-200'
+                      ? 'ring-2 ring-[var(--accent)] shadow-[#edc8b4]'
                       : 'ring-slate-300/60'
                   }`}
                 >
@@ -419,7 +419,7 @@ export default function LayoutEditor({
                   </div>
 
                   {metrics.pinnedCount > 0 && (
-                    <span className="text-indigo-500">⊕ {metrics.pinnedCount}</span>
+                    <span className="text-[var(--accent-dark)]">⊕ {metrics.pinnedCount}</span>
                   )}
                   {metrics.conflictCount > 0 && (
                     <span className="text-red-500">⚠ {metrics.conflictCount}</span>

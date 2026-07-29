@@ -1173,11 +1173,17 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   // A ref guards against firing on the initial data load.
   const isLoaded = useRef(false);
   useEffect(() => {
-    if (!isLoaded.current) return;
+    if (loading || !layoutEditorHydrated) return;
+    if (!isLoaded.current) {
+      const baselineTimer = window.setTimeout(() => {
+        isLoaded.current = true;
+      }, 300);
+      return () => window.clearTimeout(baselineTimer);
+    }
     setIsDirty(true);
     const t = setTimeout(() => saveProject(), 1500);
     return () => clearTimeout(t);
-  }, [cuts, excludedKeys, groupMultipliers, kerf, overrides, padding, result, stocks, units]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cuts, excludedKeys, groupMultipliers, kerf, layoutEditorHydrated, loading, overrides, padding, result, stocks, units]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchProject() {
     try {
@@ -1209,7 +1215,6 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       console.error('Failed to fetch project:', error);
     } finally {
       setLoading(false);
-      isLoaded.current = true;
     }
   }
 
@@ -2117,55 +2122,104 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
   if (!project) return null;
 
+  const totalPartCount = cuts.reduce((sum, cut) => sum + Math.max(1, cut.qty || 1), 0);
+  const canOptimize = cuts.length > 0 && stocks.length > 0;
+
   return (
-    <div className="pt-6 flex flex-col lg:flex-row gap-8 min-h-[calc(100vh-6rem)]">
+    <div className="flex min-h-[calc(100vh-68px)] flex-col bg-[#f5f4f0] xl:h-[calc(100vh-68px)] xl:overflow-hidden">
+      {/* Project workspace header */}
+      <div className="shrink-0 border-b border-[var(--line)] bg-white px-4 py-3 lg:px-6">
+        <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              href="/dashboard"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--line)] text-[var(--muted)] hover:bg-black/[0.03] hover:text-[var(--ink)]"
+              aria-label="Back to projects"
+            >
+              ←
+            </Link>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-base font-semibold tracking-[-0.02em] text-[var(--ink)]">{project.name}</h1>
+                <span className={`h-1.5 w-1.5 rounded-full ${isDirty ? 'bg-[var(--accent)]' : 'bg-[var(--success)]'}`} />
+                <span className="text-[10px] font-medium text-[var(--muted)]">
+                  {saving ? 'Saving…' : isDirty ? 'Unsaved changes' : 'Saved'}
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-[var(--muted)]">
+                {totalPartCount} part{totalPartCount === 1 ? '' : 's'} · {stocks.length} stock type{stocks.length === 1 ? '' : 's'}
+              </p>
+            </div>
+          </div>
+
+          <div className="order-3 flex items-center gap-2 overflow-x-auto lg:order-none lg:mx-auto">
+            <span className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${cuts.length ? 'bg-[#e5f1ea] text-[var(--success)]' : 'bg-[#eef0eb] text-[var(--muted)]'}`}>
+              <b>{cuts.length ? '✓' : '1'}</b> Parts
+            </span>
+            <span className="h-px w-5 shrink-0 bg-[var(--line)]" />
+            <span className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${stocks.length ? 'bg-[#e5f1ea] text-[var(--success)]' : 'bg-[#eef0eb] text-[var(--muted)]'}`}>
+              <b>{stocks.length ? '✓' : '2'}</b> Stock
+            </span>
+            <span className="h-px w-5 shrink-0 bg-[var(--line)]" />
+            <span className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${result ? 'bg-[var(--accent-soft)] text-[var(--accent-dark)]' : 'bg-[#eef0eb] text-[var(--muted)]'}`}>
+              <b>3</b> Layout
+            </span>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <UnitToggle value={units} onChange={setUnits} />
+            <button
+              onClick={downloadProjectBundle}
+              disabled={exportingBundle}
+              className="app-button-secondary min-h-9 py-1.5 text-xs"
+            >
+              {exportingBundle ? 'Exporting…' : 'Project bundle'}
+            </button>
+            <button
+              onClick={saveProject}
+              disabled={saving || !isDirty}
+              className="app-button-primary min-h-9 py-1.5 text-xs"
+            >
+              {saving ? 'Saving…' : isDirty ? 'Save changes' : 'Saved'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col xl:min-h-0 xl:flex-1 xl:flex-row">
 
       {/* ── LEFT PANEL ──────────────────────────────────────────────────────── */}
-      <div className="w-full lg:w-[420px] flex-shrink-0 space-y-4 lg:overflow-y-auto lg:max-h-[calc(100vh-6rem)] text-sm">
+      <aside className="flex w-full flex-shrink-0 flex-col gap-4 border-r border-[var(--line)] bg-[#faf9f6] p-4 text-sm xl:w-[460px] xl:overflow-y-auto">
 
-        {/* Project header */}
-        <div className="bg-white rounded-md p-4 shadow-sm border border-slate-200">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-3 min-w-0">
-              <Link href="/dashboard" className="text-slate-400 hover:text-slate-700 shrink-0">
-                ←
-              </Link>
-              <h1 className="font-semibold text-slate-900 truncate">{project.name}</h1>
-              <Link
-                href={`/projects/${id}/step`}
-                className="shrink-0 text-xs px-2 py-1 border border-slate-300 rounded hover:bg-slate-50 text-slate-600"
-              >
-                Import STEP
-              </Link>
+        <div className="order-0 rounded-xl border border-[var(--line)] bg-white p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-[var(--ink)]">Project setup</p>
+              <p className="mt-0.5 text-[11px] text-[var(--muted)]">Parts first, then the sheets you have on hand.</p>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <UnitToggle value={units} onChange={setUnits} />
-              <button
-                onClick={downloadProjectBundle}
-                disabled={exportingBundle}
-                className="px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50 text-slate-600 transition-colors text-xs font-medium disabled:opacity-50"
-              >
-                {exportingBundle ? 'Exporting…' : 'Export Bundle'}
-              </button>
-              <button
-                onClick={saveProject}
-                disabled={saving}
-                className={`px-3 py-1.5 rounded transition-colors text-xs font-medium disabled:opacity-50 ${
-                  isDirty ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-slate-100 text-slate-400 cursor-default'
-                }`}
-              >
-                {saving ? 'Saving…' : isDirty ? 'Save' : 'Saved'}
-              </button>
+            <div className="flex -space-x-1">
+              <span className={`h-2.5 w-2.5 rounded-full ring-2 ring-white ${cuts.length ? 'bg-[var(--success)]' : 'bg-[#d9dcd6]'}`} />
+              <span className={`h-2.5 w-2.5 rounded-full ring-2 ring-white ${stocks.length ? 'bg-[var(--success)]' : 'bg-[#d9dcd6]'}`} />
+              <span className={`h-2.5 w-2.5 rounded-full ring-2 ring-white ${result ? 'bg-[var(--accent)]' : 'bg-[#d9dcd6]'}`} />
             </div>
           </div>
         </div>
 
         {/* Settings */}
-        <div className="bg-white rounded-md p-4 shadow-sm border border-slate-200 space-y-3">
-          <h2 className="text-slate-500 text-xs font-medium uppercase tracking-wide">Settings</h2>
+        <details className="group order-3 rounded-xl border border-[var(--line)] bg-white">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3.5 [&::-webkit-details-marker]:hidden">
+            <div>
+              <h2 className="text-xs font-semibold text-[var(--ink)]">Cut settings</h2>
+              <p className="mt-0.5 text-[10px] text-[var(--muted)]">{kerf}&quot; kerf · {padding}&quot; sheet margin</p>
+            </div>
+            <svg className="h-4 w-4 text-[var(--muted)] transition-transform group-open:rotate-180" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="m4 6 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </summary>
+          <div className="space-y-3 border-t border-[var(--line)] px-4 py-4">
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <label className="text-slate-500 block mb-1">Blade Kerf</label>
+              <label className="mb-1 block text-[var(--muted)]">Blade kerf</label>
               <div className="flex items-center gap-1">
                 <input
                   type="number"
@@ -2173,19 +2227,19 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   min={0}
                   value={kerf}
                   onChange={(e) => setKerf(parseFloat(e.target.value) || 0)}
-                  className="bg-slate-50 border border-slate-200 rounded px-2 py-1.5 w-20 focus:border-slate-400 outline-none text-slate-800 text-xs"
+                  className="w-20 rounded-lg border border-[var(--line)] bg-[#f7f7f4] px-2 py-1.5 text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
                 />
-                <span className="text-slate-400 text-[10px]">in</span>
+                <span className="text-[10px] text-[var(--muted)]">in</span>
               </div>
             </div>
             <div>
-              <label className="text-slate-500 block mb-1">Presets</label>
+              <label className="mb-1 block text-[var(--muted)]">Presets</label>
               <div className="flex gap-1 flex-wrap">
                 {KERF_PRESETS.map((k) => (
                   <button
                     key={k.value}
                     onClick={() => setKerf(k.value)}
-                    className={`px-2 py-1.5 rounded text-[10px] ${kerf === k.value ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-700 border border-slate-200'}`}
+                    className={`rounded-lg px-2 py-1.5 text-[10px] ${kerf === k.value ? 'bg-[var(--ink)] text-white' : 'border border-[var(--line)] text-[var(--muted)] hover:bg-black/[0.03]'}`}
                   >
                     {k.label}
                   </button>
@@ -2195,7 +2249,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <label className="text-slate-500 block mb-1">Padding <span className="text-slate-400 font-normal">(clearance per side)</span></label>
+              <label className="mb-1 block text-[var(--muted)]">Sheet margin</label>
               <div className="flex items-center gap-1">
                 <input
                   type="number"
@@ -2203,19 +2257,19 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   min={0}
                   value={padding}
                   onChange={(e) => setPadding(parseFloat(e.target.value) || 0)}
-                  className="bg-slate-50 border border-slate-200 rounded px-2 py-1.5 w-20 focus:border-slate-400 outline-none text-slate-800 text-xs"
+                  className="w-20 rounded-lg border border-[var(--line)] bg-[#f7f7f4] px-2 py-1.5 text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
                 />
-                <span className="text-slate-400 text-[10px]">in</span>
+                <span className="text-[10px] text-[var(--muted)]">in</span>
               </div>
             </div>
             <div>
-              <label className="text-slate-500 block mb-1">Presets</label>
+              <label className="mb-1 block text-[var(--muted)]">Presets</label>
               <div className="flex gap-1 flex-wrap">
                 {[{ label: 'None', value: 0 }, { label: '¼"', value: 0.25 }, { label: '½"', value: 0.5 }, { label: '1"', value: 1 }].map((p) => (
                   <button
                     key={p.value}
                     onClick={() => setPadding(p.value)}
-                    className={`px-2 py-1.5 rounded text-[10px] ${padding === p.value ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-700 border border-slate-200'}`}
+                    className={`rounded-lg px-2 py-1.5 text-[10px] ${padding === p.value ? 'bg-[var(--ink)] text-white' : 'border border-[var(--line)] text-[var(--muted)] hover:bg-black/[0.03]'}`}
                   >
                     {p.label}
                   </button>
@@ -2223,23 +2277,30 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               </div>
             </div>
           </div>
-          <div className="flex gap-4 text-xs pt-1">
-            <label className="flex items-center gap-2 text-slate-500 cursor-pointer">
-              <input type="checkbox" checked={showAdv} onChange={(e) => setShowAdv(e.target.checked)} className="w-3 h-3 accent-slate-600" />
-              Show Material Column
+          <div className="flex gap-4 pt-1 text-xs">
+            <label className="flex cursor-pointer items-center gap-2 text-[var(--muted)]">
+              <input type="checkbox" checked={showAdv} onChange={(e) => setShowAdv(e.target.checked)} className="h-3 w-3 accent-[var(--accent)]" />
+              Show materials
             </label>
-            <label className="flex items-center gap-2 text-slate-500 cursor-pointer">
-              <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} className="w-3 h-3 accent-slate-600" />
-              Show Labels on Sheet
+            <label className="flex cursor-pointer items-center gap-2 text-[var(--muted)]">
+              <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} className="h-3 w-3 accent-[var(--accent)]" />
+              Sheet labels
             </label>
           </div>
-        </div>
+          </div>
+        </details>
 
         {/* Stock */}
-        <div className="bg-white rounded-md p-4 shadow-sm border border-slate-200 space-y-2">
-          <div className="flex justify-between items-center">
-            <h2 className="text-slate-500 text-xs font-medium uppercase tracking-wide">Stock Sheets</h2>
-            <div className="flex gap-1">
+        <div className="order-2 space-y-3 rounded-xl border border-[var(--line)] bg-white p-4">
+          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
+            <div className="flex gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#eef0eb] text-[11px] font-bold text-[var(--foreground)]">2</span>
+              <div>
+                <h2 className="text-xs font-semibold text-[var(--ink)]">Material &amp; stock</h2>
+                <p className="mt-0.5 text-[10px] text-[var(--muted)]">Add the sheets available for this job.</p>
+              </div>
+            </div>
+            <div className="flex w-full gap-1.5 sm:w-auto">
               <select
                 onChange={(e) => {
                   if (e.target.value) {
@@ -2248,18 +2309,18 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     e.target.value = '';
                   }
                 }}
-                className="bg-slate-50 border border-slate-200 text-xs rounded px-1 py-0.5 text-slate-600"
+                className="min-w-0 flex-1 rounded-lg border border-[var(--line)] bg-[#f7f7f4] px-2 py-1.5 text-[11px] text-[var(--foreground)] sm:flex-none"
                 defaultValue=""
               >
-                <option value="">+preset</option>
+                <option value="">Add preset…</option>
                 {STOCK_PRESETS.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
               </select>
-              <button onClick={() => addStock()} className="text-xs text-slate-500 hover:text-slate-700">+custom</button>
+              <button onClick={() => addStock()} className="rounded-lg border border-dashed border-[#c5c9c2] px-2 py-1.5 text-[11px] font-semibold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]">+ Custom</button>
             </div>
           </div>
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-slate-400">
+              <tr className="text-[var(--muted)]">
                 <th className="text-left font-normal pb-1">Name</th>
                 <th className="text-right font-normal pb-1 w-12">L</th>
                 <th className="text-right font-normal pb-1 w-12">W</th>
@@ -2271,9 +2332,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             </thead>
             <tbody>
               {stocks.map((s) => (
-                <tr key={s.id} className="border-t border-slate-100">
+                <tr key={s.id} className="border-t border-[var(--line)]">
                   <td className="py-0.5">
-                    <input value={s.name} onChange={(e) => setStocks(stocks.map((x) => x.id === s.id ? { ...x, name: e.target.value } : x))} className="bg-transparent w-full outline-none text-slate-700" />
+                    <input value={s.name} onChange={(e) => setStocks(stocks.map((x) => x.id === s.id ? { ...x, name: e.target.value } : x))} className="w-full bg-transparent py-1 outline-none text-[var(--foreground)]" />
                   </td>
                   <td className="py-0.5">
                     <input type="number" step="1" min={0} value={s.l} onChange={(e) => setStocks(stocks.map((x) => x.id === s.id ? { ...x, l: parseFloat(e.target.value) || 0 } : x))} className="bg-transparent w-full text-right outline-none text-slate-700 text-xs" />
@@ -2300,34 +2361,48 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 </tr>
               ))}
               {stocks.length === 0 && (
-                <tr><td colSpan={showAdv ? 7 : 6} className="py-3 text-center text-slate-400">No stock added yet</td></tr>
+                <tr><td colSpan={showAdv ? 7 : 6} className="py-5 text-center text-[var(--muted)]">Add a sheet to continue</td></tr>
               )}
             </tbody>
           </table>
         </div>
 
         {/* Parts */}
-        <div className="bg-white rounded-md p-4 shadow-sm border border-slate-200 space-y-2">
-          <div className="flex justify-between items-center">
-            <h2 className="text-slate-500 text-xs font-medium uppercase tracking-wide">Parts to Cut</h2>
-            <button
-              onClick={() => setCuts([
-                ...cuts,
-                {
-                  id: Date.now(),
-                  dbId: crypto.randomUUID(),
-                  label: `Part ${cuts.length + 1}`,
-                  l: 24,
-                  w: 12,
-                  t: 0,
-                  qty: 1,
-                  mat: '',
-                },
-              ])}
-              className="text-xs text-slate-500 hover:text-slate-700"
-            >
-              +add
-            </button>
+        <div className="order-1 space-y-3 rounded-xl border border-[var(--line)] bg-white p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#eef0eb] text-[11px] font-bold text-[var(--foreground)]">1</span>
+              <div>
+                <h2 className="text-xs font-semibold text-[var(--ink)]">Parts to cut</h2>
+                <p className="mt-0.5 text-[10px] text-[var(--muted)]">{totalPartCount || 'No'} part{totalPartCount === 1 ? '' : 's'} in this project.</p>
+              </div>
+            </div>
+            <div className="flex gap-1.5">
+              <Link
+                href={`/projects/${id}/step`}
+                className="rounded-lg bg-[var(--accent-soft)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--accent-dark)] hover:bg-[#f4d9c9]"
+              >
+                Import STEP
+              </Link>
+              <button
+                onClick={() => setCuts([
+                  ...cuts,
+                  {
+                    id: Date.now(),
+                    dbId: crypto.randomUUID(),
+                    label: `Part ${cuts.length + 1}`,
+                    l: 24,
+                    w: 12,
+                    t: 0,
+                    qty: 1,
+                    mat: '',
+                  },
+                ])}
+                className="rounded-lg border border-dashed border-[#c5c9c2] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--foreground)] hover:bg-black/[0.03]"
+              >
+                + Manual
+              </button>
+            </div>
           </div>
           <CutList
             cuts={cuts}
@@ -2343,35 +2418,51 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         </div>
 
         {/* Optimize */}
-        <div>
+        <div className="order-4 rounded-xl border border-[#d7d9d2] bg-white/95 p-3 shadow-[0_-8px_24px_rgba(29,41,36,0.07)] backdrop-blur xl:sticky xl:bottom-0">
           <button
             onClick={() => handleOptimize(false)}
-            className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded text-sm transition-colors"
+            disabled={!canOptimize}
+            className="app-button-primary w-full bg-[var(--accent)] hover:bg-[var(--accent-dark)]"
           >
-            Optimize Cut Layout
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M4 5h7v6H4zM13 5h7v3h-7zM13 10h7v9h-7zM4 13h7v6H4z" strokeLinejoin="round" />
+            </svg>
+            {result ? 'Optimize again' : 'Create cut layout'}
+            <span className="ml-auto">→</span>
           </button>
           {stats && (
-            <div className="text-xs text-slate-500 text-center mt-2">
-              {stats.sheets} sheet{stats.sheets !== 1 ? 's' : ''} · {stats.waste}% waste
+            <div className="mt-2 text-center text-xs text-[var(--muted)]">
+              {stats.sheets} sheet{stats.sheets !== 1 ? 's' : ''} · <b className="font-semibold text-[var(--foreground)]">{stats.waste}% waste</b>
               {stats.unplaced > 0 && <span className="text-red-500"> · {stats.unplaced} unplaced</span>}
             </div>
+          )}
+          {!canOptimize && (
+            <p className="mt-2 text-center text-[10px] text-[var(--muted)]">Add at least one part and one stock sheet.</p>
           )}
         </div>
 
         {/* Results table */}
         {result && result.sheets.length > 0 && (
-          <div className="bg-white rounded-md p-4 shadow-sm border border-slate-200 space-y-3">
+          <div className="order-5 space-y-3 rounded-xl border border-[var(--line)] bg-white p-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-slate-500 text-xs font-medium uppercase tracking-wide">Cut List</h2>
-              <span className="text-slate-400 text-xs">{result.sheets.reduce((acc, s) => acc + s.cuts.length, 0)} cuts</span>
+              <div>
+                <h2 className="text-xs font-semibold text-[var(--ink)]">Shop output</h2>
+                <p className="mt-0.5 text-[10px] text-[var(--muted)]">Download plans or CNC-ready files.</p>
+              </div>
+              <span className="rounded-full bg-[#eef0eb] px-2 py-1 text-[10px] font-semibold text-[var(--foreground)]">{result.sheets.reduce((acc, s) => acc + s.cuts.length, 0)} cuts</span>
             </div>
-            <div className="space-y-2">
+            <details className="group rounded-lg border border-[var(--line)]">
+              <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-xs font-semibold text-[var(--foreground)] [&::-webkit-details-marker]:hidden">
+                Sheet-by-sheet cut list
+                <span className="text-[var(--muted)] transition-transform group-open:rotate-180">⌄</span>
+              </summary>
+              <div className="space-y-3 border-t border-[var(--line)] p-3">
               {result.sheets.map((sheet, i) => {
                 const canExportSheet = Boolean(buildSheetContext(i)?.payload);
                 return (
                   <div key={i}>
-                    <div className="flex items-center justify-between text-xs text-slate-500 mb-0.5">
-                      <span>Sheet {i + 1}: {sheet.name}</span>
+                    <div className="mb-1 flex items-center justify-between text-xs text-[var(--muted)]">
+                      <span className="font-semibold text-[var(--foreground)]">Sheet {i + 1}: {sheet.name}</span>
                       {canExportSheet && (
                         <div className="flex gap-1">
                           <button
@@ -2434,10 +2525,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   </div>
                 );
               })}
-            </div>
+              </div>
 
             {result.unplaced.length > 0 && (
-              <div className="mt-2">
+              <div className="border-t border-[var(--line)] p-3">
                 <div className="text-xs text-red-500 mb-0.5">Unplaced ({result.unplaced.length})</div>
                 <table className="w-full text-xs">
                   <thead>
@@ -2459,39 +2550,61 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 </table>
               </div>
             )}
+            </details>
 
-            <div className="flex gap-3 pt-3 mt-3 border-t border-slate-200">
-              <button onClick={downloadPDF} className="text-slate-600 hover:text-slate-800 text-xs">↓ PDF</button>
-              <button onClick={downloadCutListCSV} className="text-slate-400 hover:text-slate-600 text-xs">↓ CSV</button>
-              <button onClick={downloadLayoutSVG} className="text-slate-400 hover:text-slate-600 text-xs">↓ SVG</button>
+            <div className="grid grid-cols-3 gap-2">
+              <button onClick={downloadPDF} className="rounded-lg border border-[var(--line)] px-2 py-2 text-xs font-semibold text-[var(--foreground)] hover:bg-black/[0.03]">PDF</button>
+              <button onClick={downloadCutListCSV} className="rounded-lg border border-[var(--line)] px-2 py-2 text-xs font-semibold text-[var(--foreground)] hover:bg-black/[0.03]">CSV</button>
+              <button onClick={downloadLayoutSVG} className="rounded-lg border border-[var(--line)] px-2 py-2 text-xs font-semibold text-[var(--foreground)] hover:bg-black/[0.03]">SVG</button>
               <button
                 onClick={() => downloadAllSheetDxfs()}
                 disabled={exportingSheetDxfs || exportableSheetIndices.length === 0}
-                className="text-slate-400 hover:text-slate-600 text-xs disabled:opacity-40"
+                className="col-span-3 rounded-lg border border-[var(--line)] px-2 py-2 text-xs font-semibold text-[var(--foreground)] hover:bg-black/[0.03] disabled:opacity-40"
               >
-                {exportingSheetDxfs ? 'Preparing DXFs…' : '↓ All Sheet DXFs'}
+                {exportingSheetDxfs ? 'Preparing DXFs…' : 'Download all sheet DXFs'}
               </button>
               <button
                 onClick={() => downloadAllSheetDxfs('vcarve')}
                 disabled={exportingVcarveDxfs || exportableSheetIndices.length === 0}
-                className="text-amber-700 hover:text-amber-800 text-xs disabled:opacity-40"
+                className="col-span-3 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-40"
               >
-                {exportingVcarveDxfs ? 'Preparing VCarve DXFs…' : '↓ VCarve DXFs'}
+                {exportingVcarveDxfs ? 'Preparing VCarve DXFs…' : 'Download VCarve DXFs'}
               </button>
             </div>
           </div>
         )}
-      </div>
+      </aside>
 
       {/* ── RIGHT PANEL — Interactive Layout Editor ──────────────────────────── */}
-      <div className="flex-1 min-w-0">
+      <section className="min-h-[520px] min-w-0 flex-1 overflow-auto bg-[#eeefeb] p-4 lg:p-6 xl:min-h-0">
         {!result ? (
-          <div className="h-full min-h-[200px] flex items-center justify-center text-slate-400 text-sm">
-            Click Optimize to generate cut layout
+          <div className="flex h-full min-h-[480px] items-center justify-center">
+            <div className="max-w-md text-center">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#d7d9d3] bg-white text-[var(--accent-dark)] shadow-sm">
+                <svg className="h-8 w-8" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3">
+                  <rect x="4" y="5" width="24" height="22" rx="2" />
+                  <path d="M8 9h8v6H8zM19 9h5v10h-5zM8 18h8v5H8zM19 22h5" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <p className="app-eyebrow">Layout preview</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-[var(--ink)]">Ready when your inputs are</h2>
+              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[var(--muted)]">
+                Add the parts you need and the stock you have. Kerf will arrange everything here with blade width and margins accounted for.
+              </p>
+              <div className="mt-6 flex items-center justify-center gap-4 text-xs text-[var(--muted)]">
+                <span className={cuts.length ? 'text-[var(--success)]' : ''}>{cuts.length ? '✓' : '○'} Parts</span>
+                <span className={stocks.length ? 'text-[var(--success)]' : ''}>{stocks.length ? '✓' : '○'} Stock</span>
+                <span>○ Layout</span>
+              </div>
+            </div>
           </div>
         ) : result.sheets.length === 0 && excludedCuts.length === 0 ? (
-          <div className="h-full min-h-[200px] flex items-center justify-center text-red-500 text-sm">
-            No sheets generated. Parts may be too large for available stock.
+          <div className="flex h-full min-h-[480px] items-center justify-center">
+            <div className="max-w-sm rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm">
+              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-600">!</div>
+              <h2 className="font-semibold text-[var(--ink)]">These parts don&apos;t fit yet</h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Check the stock dimensions or add a larger sheet, then optimize again.</p>
+            </div>
           </div>
         ) : (
           <LayoutEditor
@@ -2511,6 +2624,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             onReoptimizeAll={() => handleOptimize(false)}
           />
         )}
+      </section>
       </div>
 
       {/* Sheet DXF Preview Modal */}

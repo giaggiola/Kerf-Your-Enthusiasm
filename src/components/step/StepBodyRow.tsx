@@ -48,8 +48,12 @@ export function StepBodyRow({ included, name, selected, confirmed, onSelect, onT
 
   return (
     <div
-      className={`flex items-center gap-1.5 px-2 py-1.5 rounded cursor-pointer transition-colors ${
-        selected ? 'bg-slate-200' : included ? 'hover:bg-slate-100' : 'opacity-40 hover:bg-slate-100'
+      className={`flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 transition-colors ${
+        selected
+          ? 'bg-[var(--accent-soft)] text-[var(--accent-dark)]'
+          : included
+            ? 'text-[var(--foreground)] hover:bg-black/[0.03]'
+            : 'text-[var(--muted)] opacity-45 hover:bg-black/[0.03]'
       }`}
       onClick={onSelect}
     >
@@ -59,7 +63,7 @@ export function StepBodyRow({ included, name, selected, confirmed, onSelect, onT
         checked={included}
         onChange={(e) => { e.stopPropagation(); onToggle(); }}
         onClick={(e) => e.stopPropagation()}
-        className="shrink-0 w-3.5 h-3.5"
+        className="h-3.5 w-3.5 shrink-0 accent-[var(--accent)]"
       />
 
       {/* Name */}
@@ -74,17 +78,17 @@ export function StepBodyRow({ included, name, selected, confirmed, onSelect, onT
             if (e.key === 'Escape') { setEditing(false); setDraft(name); }
           }}
           onClick={(e) => e.stopPropagation()}
-          className="flex-1 text-xs px-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-500"
+          className="min-w-0 flex-1 rounded border border-[var(--line)] bg-white px-1.5 py-0.5 text-xs text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none"
         />
       ) : (
-        <span className="flex-1 text-xs truncate">{name}</span>
+        <span className="min-w-0 flex-1 truncate text-xs font-medium">{name}</span>
       )}
 
       {/* Rename pencil */}
       <button
         title="Rename"
         onClick={(e) => { e.stopPropagation(); setEditing(true); setDraft(name); }}
-        className="shrink-0 p-0.5 text-slate-300 hover:text-slate-600"
+        className="shrink-0 p-0.5 text-[#b6bcb5] hover:text-[var(--ink)]"
       >
         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -98,11 +102,11 @@ export function StepBodyRow({ included, name, selected, confirmed, onSelect, onT
         className="shrink-0"
       >
         {confirmed ? (
-          <svg className="w-3.5 h-3.5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="h-3.5 w-3.5 text-[var(--success)]" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
           </svg>
         ) : (
-          <svg className="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+          <svg className="h-3.5 w-3.5 text-[#c3c8c1]" fill="none" stroke="currentColor" viewBox="0 0 20 20">
             <circle cx="10" cy="10" r="7" strokeWidth="1.5" strokeDasharray="3 2" />
           </svg>
         )}

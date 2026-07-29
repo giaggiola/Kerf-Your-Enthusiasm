@@ -661,18 +661,21 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-slate-200 rounded w-1/4"></div>
-          <div className="h-32 bg-slate-200 rounded"></div>
-          <div className="h-32 bg-slate-200 rounded"></div>
+      <div className="mx-auto max-w-6xl py-10 sm:py-14">
+        <div className="animate-pulse space-y-7">
+          <div className="h-10 w-64 rounded-lg bg-black/10" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="h-48 rounded-2xl bg-black/10" />
+            <div className="h-48 rounded-2xl bg-black/10" />
+          </div>
+          <div className="h-40 rounded-2xl bg-black/10" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="mx-auto max-w-6xl py-10 sm:py-14">
       <input
         ref={bundleInputRef}
         type="file"
@@ -681,116 +684,166 @@ export default function DashboardPage() {
         className="hidden"
       />
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-9 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Projects</h1>
-          <p className="text-slate-600 mt-1">
-            Welcome back, {session?.user.name || 'there'}
+          <p className="app-eyebrow">Project library</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[var(--ink)] sm:text-4xl">
+            What are we cutting?
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+            Welcome back, {session?.user.name?.split(' ')[0] || 'there'}. Start with a CAD model or build a cut list by hand.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => bundleInputRef.current?.click()}
             disabled={importingBundle}
-            className="px-4 py-2 bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium disabled:opacity-50"
+            className="app-button-secondary"
           >
-            {importingBundle ? 'Importing...' : 'Import Bundle'}
-          </button>
-          <button
-            onClick={handleNewStepProject}
-            disabled={creatingStep}
-            className="px-4 py-2 bg-slate-100 text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-200 transition-colors text-sm font-medium disabled:opacity-50"
-          >
-            {creatingStep ? 'Creating...' : '↑ Import STEP'}
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M4 16.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2.5M8 8l4-4 4 4M12 4v12" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {importingBundle ? 'Importing…' : 'Import bundle'}
           </button>
           <button
             onClick={() => setShowNewForm(true)}
-            className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm font-medium"
+            className="app-button-primary"
           >
-            New Project
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+            </svg>
+            New project
           </button>
         </div>
       </div>
 
       {bundleError && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {bundleError}
         </div>
       )}
 
       {showNewForm && (
-        <div className="mb-6 p-4 bg-white rounded-lg border border-slate-200">
-          <form onSubmit={handleCreateProject} className="flex gap-3">
-            <input
-              type="text"
-              value={newProjectName}
-              onChange={(e) => setNewProjectName(e.target.value)}
-              placeholder="Project name..."
-              className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
-              autoFocus
-            />
-            <button
-              type="submit"
-              disabled={creating || !newProjectName.trim()}
-              className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm font-medium disabled:opacity-50"
-            >
-              {creating ? 'Creating...' : 'Create'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowNewForm(false);
-                setNewProjectName('');
-              }}
-              className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors text-sm"
-            >
-              Cancel
-            </button>
+        <div className="app-card mb-6 border-[var(--accent)]/30 bg-[var(--accent-soft)]/45 p-5">
+          <form onSubmit={handleCreateProject} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="flex-1">
+              <span className="mb-1.5 block text-xs font-semibold text-[var(--foreground)]">Project name</span>
+              <input
+                type="text"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                placeholder="e.g. Walnut media console"
+                className="app-input w-full"
+                autoFocus
+              />
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={creating || !newProjectName.trim()}
+                className="app-button-primary"
+              >
+                {creating ? 'Creating…' : 'Create project'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewForm(false);
+                  setNewProjectName('');
+                }}
+                className="app-button-secondary"
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
       )}
 
-      {projects.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-slate-200">
-          <div className="text-slate-400 text-5xl mb-4">📐</div>
-          <h3 className="text-lg font-medium text-slate-900 mb-2">
-            No projects yet
-          </h3>
-          <p className="text-slate-600 mb-4">
-            Create a project manually or import a STEP file to get started
-          </p>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => bundleInputRef.current?.click()}
-              disabled={importingBundle}
-              className="px-4 py-2 bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium disabled:opacity-50"
-            >
-              {importingBundle ? 'Importing...' : 'Import Bundle'}
-            </button>
-            <button
-              onClick={handleNewStepProject}
-              disabled={creatingStep}
-              className="px-4 py-2 bg-slate-100 text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-200 transition-colors text-sm font-medium disabled:opacity-50"
-            >
-              {creatingStep ? 'Creating...' : '↑ Import STEP'}
-            </button>
-            <button
-              onClick={() => setShowNewForm(true)}
-              className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm font-medium"
-            >
-              New Cut List
-            </button>
+      <section className="mb-11 grid gap-4 md:grid-cols-2">
+        <button
+          onClick={handleNewStepProject}
+          disabled={creatingStep}
+          className="group relative min-h-48 overflow-hidden rounded-2xl bg-[var(--ink)] p-6 text-left text-white shadow-[0_14px_36px_rgba(29,41,36,0.16)] transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+        >
+          <div className="absolute -right-10 -top-16 h-48 w-48 rounded-full border border-white/10" />
+          <div className="absolute -right-2 -top-8 h-32 w-32 rounded-full border border-white/10" />
+          <div className="relative flex h-full flex-col justify-between">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-[#f3a27b]">
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="m12 3 7 4v10l-7 4-7-4V7l7-4Z" strokeLinejoin="round" />
+                <path d="m5 7 7 4 7-4M12 11v10" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <h2 className="text-xl font-semibold tracking-[-0.025em]">
+                  {creatingStep ? 'Opening workspace…' : 'Start from CAD'}
+                </h2>
+                <span className="text-xl transition-transform group-hover:translate-x-1">→</span>
+              </div>
+              <p className="max-w-sm text-sm leading-6 text-white/60">
+                Upload STEP files, choose the cut faces, then send the parts straight into optimization.
+              </p>
+            </div>
           </div>
+        </button>
+
+        <button
+          onClick={() => setShowNewForm(true)}
+          className="app-card group min-h-48 p-6 text-left transition-transform hover:-translate-y-0.5 hover:border-[#c8ccc5]"
+        >
+          <div className="flex h-full flex-col justify-between">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-dark)]">
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <h2 className="text-xl font-semibold tracking-[-0.025em] text-[var(--ink)]">Build a cut list</h2>
+                <span className="text-xl text-[var(--muted)] transition-transform group-hover:translate-x-1">→</span>
+              </div>
+              <p className="max-w-sm text-sm leading-6 text-[var(--muted)]">
+                Enter sheet stock and part dimensions manually for a fast, saved project.
+              </p>
+            </div>
+          </div>
+        </button>
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="app-eyebrow">Recent work</p>
+            <h2 className="mt-1 text-xl font-semibold tracking-[-0.025em] text-[var(--ink)]">
+              {projects.length === 0 ? 'Your projects will live here' : `${projects.length} project${projects.length === 1 ? '' : 's'}`}
+            </h2>
+          </div>
+          <Link href="/tools" className="text-sm font-medium text-[var(--muted)] hover:text-[var(--ink)]">
+            Shop tools →
+          </Link>
         </div>
-      ) : (
-        <div className="space-y-3">
+
+        {projects.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[#cfd2cb] px-6 py-10 text-center">
+            <p className="text-sm font-medium text-[var(--foreground)]">No saved projects yet</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">Choose one of the starting points above to make the first one.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
           {projects.map((project) => (
             <div
               key={project.id}
-              className="bg-white rounded-lg border border-slate-200 p-4 hover:border-slate-300 transition-colors"
+              className="app-card group p-5 transition-transform hover:-translate-y-0.5 hover:border-[#c8ccc5]"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
+              <div className="flex items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#eef0eb] text-[var(--foreground)]">
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                    <path d="M4 7.5h6l1.5-2H20v13H4z" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
                   {renamingProjectId === project.id ? (
                     <input
                       value={renameDraft}
@@ -805,115 +858,95 @@ export default function DashboardPage() {
                           cancelRenamingProject();
                         }
                       }}
-                      className="w-full max-w-md rounded border border-slate-300 px-2 py-1 text-lg font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      className="app-input h-10 w-full py-1.5 text-base font-semibold"
                       autoFocus
                     />
                   ) : (
                     <Link
                       href={`/projects/${project.id}`}
-                      className="text-lg font-medium text-slate-900 hover:text-slate-600"
+                      className="block truncate text-base font-semibold tracking-[-0.015em] text-[var(--ink)] hover:text-[var(--accent-dark)]"
                     >
                       {project.name}
                     </Link>
                   )}
                   {project.description && (
-                    <p className="text-slate-600 text-sm mt-1">
+                    <p className="mt-1 line-clamp-2 text-sm text-[var(--muted)]">
                       {project.description}
                     </p>
                   )}
-                  <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
-                    <span>{project.stocks.length} stocks</span>
-                    <span>{project.cuts.length} cuts</span>
-                    <span>Kerf: {project.kerf}&quot;</span>
-                    <span>Updated {formatDate(project.updatedAt)}</span>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--muted)]">
+                    <span><b className="font-semibold text-[var(--foreground)]">{project.cuts.length}</b> parts</span>
+                    <span><b className="font-semibold text-[var(--foreground)]">{project.stocks.length}</b> stock types</span>
+                    <span>{project.kerf}&quot; kerf</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="shrink-0">
                   {renamingProjectId === project.id ? (
-                    <>
+                    <div className="flex gap-1">
                       <button
                         onClick={() => { void handleRenameProject(project); }}
                         disabled={savingRenameId === project.id || !renameDraft.trim()}
-                        className="px-3 py-1.5 text-sm text-white bg-slate-800 hover:bg-slate-700 rounded transition-colors disabled:opacity-50"
+                        className="rounded-lg bg-[var(--ink)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
                       >
-                        {savingRenameId === project.id ? 'Saving...' : 'Save'}
+                        {savingRenameId === project.id ? 'Saving…' : 'Save'}
                       </button>
                       <button
                         onClick={cancelRenamingProject}
                         disabled={savingRenameId === project.id}
-                        className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors disabled:opacity-50"
+                        className="rounded-lg px-2 py-2 text-xs text-[var(--muted)] hover:bg-black/5 disabled:opacity-50"
                       >
                         Cancel
                       </button>
-                    </>
+                    </div>
                   ) : (
-                    <>
-                      <button
-                        onClick={() => startRenamingProject(project)}
-                        disabled={duplicatingProjectId !== null || savingRenameId !== null}
-                        className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors disabled:opacity-50"
-                      >
-                        Rename
-                      </button>
-                      <button
-                        onClick={() => { void handleDuplicateProject(project.id); }}
-                        disabled={duplicatingProjectId !== null || renamingProjectId !== null}
-                        className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors disabled:opacity-50"
-                      >
-                        {duplicatingProjectId === project.id ? 'Duplicating...' : 'Duplicate'}
-                      </button>
-                      <Link
-                        href={`/projects/${project.id}/step`}
-                        className="px-3 py-1.5 text-sm text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
-                      >
-                        ↑ STEP
-                      </Link>
-                      <Link
-                        href={`/projects/${project.id}`}
-                        className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
-                      >
-                        Open
-                      </Link>
-                      <button
-                        onClick={() => handleDeleteProject(project.id)}
-                        className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </>
+                    <details className="relative">
+                      <summary className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-lg text-[var(--muted)] hover:bg-black/5 [&::-webkit-details-marker]:hidden" aria-label={`Actions for ${project.name}`}>
+                        <span className="mb-2 text-xl leading-none">•••</span>
+                      </summary>
+                      <div className="absolute right-0 top-10 z-20 w-44 rounded-xl border border-[var(--line)] bg-white p-1.5 text-sm shadow-xl">
+                        <button
+                          onClick={() => startRenamingProject(project)}
+                          disabled={duplicatingProjectId !== null || savingRenameId !== null}
+                          className="block w-full rounded-lg px-3 py-2 text-left text-[var(--foreground)] hover:bg-black/[0.04] disabled:opacity-50"
+                        >
+                          Rename
+                        </button>
+                        <button
+                          onClick={() => { void handleDuplicateProject(project.id); }}
+                          disabled={duplicatingProjectId !== null || renamingProjectId !== null}
+                          className="block w-full rounded-lg px-3 py-2 text-left text-[var(--foreground)] hover:bg-black/[0.04] disabled:opacity-50"
+                        >
+                          {duplicatingProjectId === project.id ? 'Duplicating…' : 'Duplicate'}
+                        </button>
+                        <Link href={`/projects/${project.id}/step`} className="block rounded-lg px-3 py-2 text-[var(--foreground)] hover:bg-black/[0.04]">
+                          Add STEP files
+                        </Link>
+                        <div className="my-1 h-px bg-[var(--line)]" />
+                        <button
+                          onClick={() => handleDeleteProject(project.id)}
+                          className="block w-full rounded-lg px-3 py-2 text-left text-red-600 hover:bg-red-50"
+                        >
+                          Delete project
+                        </button>
+                      </div>
+                    </details>
                   )}
                 </div>
               </div>
+              <div className="mt-5 flex items-center justify-between border-t border-[var(--line)] pt-4">
+                <span className="text-xs text-[var(--muted)]">Updated {formatDate(project.updatedAt)}</span>
+                <Link
+                  href={`/projects/${project.id}`}
+                  className="flex items-center gap-2 text-sm font-semibold text-[var(--accent-dark)]"
+                >
+                  Open workspace <span className="transition-transform group-hover:translate-x-0.5">→</span>
+                </Link>
+              </div>
             </div>
           ))}
-        </div>
-      )}
-
-      <div className="mt-8 p-4 bg-slate-50 rounded-lg border border-slate-200">
-        <h3 className="font-medium text-slate-900 mb-2">Quick Actions</h3>
-        <div className="flex gap-3">
-          <Link
-            href="/cut-list"
-            className="text-sm text-slate-600 hover:text-slate-900"
-          >
-            Open Cut List (without saving)
-          </Link>
-          <span className="text-slate-300">|</span>
-          <Link
-            href="/tools"
-            className="text-sm text-slate-600 hover:text-slate-900"
-          >
-            Manage Tools
-          </Link>
-          <span className="text-slate-300">|</span>
-          <Link
-            href="/calculators"
-            className="text-sm text-slate-600 hover:text-slate-900"
-          >
-            Calculators
-          </Link>
-        </div>
-      </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

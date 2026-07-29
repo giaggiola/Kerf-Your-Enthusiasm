@@ -336,43 +336,59 @@ export default function CutListPage() {
     <>
       {/* Save as Project Modal */}
       {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl w-full">
-            <h3 className="text-lg font-medium text-slate-800 mb-4">Save as Project</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink)]/50 p-4 backdrop-blur-sm">
+          <div className="app-card mx-4 w-full max-w-sm p-6 shadow-xl">
+            <h3 className="mb-1 text-lg font-semibold text-[var(--ink)]">Save this cut plan</h3>
+            <p className="mb-4 text-sm text-[var(--muted)]">Give it a name so you can return to it later.</p>
             <input
               type="text"
               placeholder="Project name..."
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 mb-4"
+              className="app-input mb-4 w-full"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && saveProject()}
             />
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => { setShowSaveModal(false); setProjectName(''); }}
-                className="px-3 py-1.5 text-slate-600 hover:text-slate-800 text-sm"
+                className="app-button-secondary"
               >
                 Cancel
               </button>
               <button
                 onClick={saveProject}
                 disabled={saving || !projectName.trim()}
-                className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm font-medium disabled:opacity-50"
+                className="app-button-primary"
               >
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? 'Saving…' : 'Save project'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-    <div className="pt-6 flex flex-col lg:flex-row gap-8 min-h-[calc(100vh-6rem)]">
+    <div className="py-10 sm:py-12">
+      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="app-eyebrow">Quick optimize</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[var(--ink)]">Plan a sheet in minutes</h1>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">Enter the stock you have and the pieces you need. Nothing is saved unless you choose to make it a project.</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
+          <span className="rounded-full bg-[#e8ebe5] px-3 py-1.5">1 · Stock</span>
+          <span>→</span>
+          <span className="rounded-full bg-[#e8ebe5] px-3 py-1.5">2 · Parts</span>
+          <span>→</span>
+          <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1.5 text-[var(--accent-dark)]">3 · Layout</span>
+        </div>
+      </div>
+    <div className="flex min-h-[680px] flex-col gap-6 lg:flex-row">
       {/* LEFT PANEL - Inputs */}
-      <div className="w-full lg:w-[420px] flex-shrink-0 space-y-6 lg:overflow-y-auto lg:max-h-[calc(100vh-6rem)] text-sm">
+      <div className="w-full flex-shrink-0 space-y-4 text-sm lg:w-[460px]">
 
         {/* Settings Section */}
-        <div className="bg-white rounded-md p-4 shadow-sm border border-slate-200 space-y-3">
+        <div className="app-card space-y-3 p-5">
           <div className="flex justify-between items-center">
             <h2 className="text-slate-500 text-xs font-medium uppercase tracking-wide">Settings</h2>
             <button
@@ -458,7 +474,7 @@ export default function CutListPage() {
         </div>
 
         {/* Stock */}
-        <div className="bg-white rounded-md p-4 shadow-sm border border-slate-200 space-y-2">
+        <div className="app-card space-y-2 p-5">
           <div className="flex justify-between items-center">
             <h2 className="text-slate-500 text-xs font-medium uppercase tracking-wide">Add Stock</h2>
             <div className="flex gap-1">
@@ -498,7 +514,7 @@ export default function CutListPage() {
         </div>
 
         {/* Parts */}
-        <div className="bg-white rounded-md p-4 shadow-sm border border-slate-200 space-y-2">
+        <div className="app-card space-y-2 p-5">
           <div className="flex justify-between items-center">
             <h2 className="text-slate-500 text-xs font-medium uppercase tracking-wide">Add Parts</h2>
             <button onClick={() => setCuts([...cuts, { id: Date.now(), label: `Part ${cuts.length + 1}`, l: 12, w: 12, t: 0, qty: 1, mat: '' }])} className="text-xs text-slate-500 hover:text-slate-700">+add</button>
@@ -531,9 +547,9 @@ export default function CutListPage() {
         <div>
           <button
             onClick={() => setResult(optimizeCutsBest(stocks, cuts, kerf, 0, [], [], sheetEdgePadding))}
-            className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded text-sm transition-colors"
+            className="app-button-primary w-full bg-[var(--accent)] hover:bg-[var(--accent-dark)]"
           >
-            Optimize Cut Layout
+            Create cut layout <span className="ml-auto">→</span>
           </button>
           {stats && (
             <div className="text-xs text-slate-500 text-center mt-2">
@@ -631,10 +647,19 @@ export default function CutListPage() {
       </div>
 
       {/* RIGHT PANEL - Visualization */}
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         {!result ? (
-          <div className="h-full min-h-[200px] flex items-center justify-center text-slate-400 text-sm">
-            Click Optimize to generate cut layout
+          <div className="flex h-full min-h-[520px] items-center justify-center rounded-2xl border border-dashed border-[#cdd1ca] bg-[#eeefeb] p-8">
+            <div className="max-w-sm text-center">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[var(--accent-dark)] shadow-sm">
+                <svg className="h-7 w-7" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3">
+                  <rect x="4" y="5" width="24" height="22" rx="2" />
+                  <path d="M8 9h8v6H8zM19 9h5v10h-5zM8 18h8v5H8zM19 22h5" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-semibold text-[var(--ink)]">Your layout will appear here</h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Review the example stock and parts, make any changes, then create the cut layout.</p>
+            </div>
           </div>
         ) : result.sheets.length === 0 ? (
           <div className="h-full min-h-[200px] flex items-center justify-center text-red-500 text-sm">
@@ -746,6 +771,7 @@ export default function CutListPage() {
           })()
         )}
       </div>
+    </div>
     </div>
     </>
   );

@@ -38,7 +38,7 @@ export function UserMenu() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 transition-colors"
+        className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-black/[0.04]"
       >
         {session.user.image ? (
           <Image
@@ -49,19 +49,19 @@ export function UserMenu() {
             className="w-8 h-8 rounded-full"
           />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-white text-sm font-medium">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-sm font-medium text-white">
             {session.user.name?.charAt(0) || session.user.email?.charAt(0) || 'U'}
           </div>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
-          <div className="px-4 py-2 border-b border-slate-100">
-            <p className="text-sm font-medium text-slate-900 truncate">
+        <div className="absolute right-0 z-50 mt-2 w-52 rounded-xl border border-[var(--line)] bg-white p-1.5 shadow-xl">
+          <div className="mb-1 border-b border-[var(--line)] px-3 py-2">
+            <p className="truncate text-sm font-semibold text-[var(--ink)]">
               {session.user.name}
             </p>
-            <p className="text-xs text-slate-500 truncate">
+            <p className="truncate text-xs text-[var(--muted)]">
               {session.user.email}
             </p>
           </div>
@@ -69,14 +69,14 @@ export function UserMenu() {
           <Link
             href="/dashboard"
             onClick={() => setIsOpen(false)}
-            className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="block rounded-lg px-3 py-2 text-sm text-[var(--foreground)] hover:bg-black/[0.04]"
           >
-            My Projects
+            Projects
           </Link>
 
           <button
             onClick={handleSignOut}
-            className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="w-full rounded-lg px-3 py-2 text-left text-sm text-[var(--foreground)] hover:bg-black/[0.04]"
           >
             Sign out
           </button>

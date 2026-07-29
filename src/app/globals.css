@@ -1,14 +1,158 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #1e293b;
+  --background: #f3f1ec;
+  --paper: #fffdf9;
+  --paper-strong: #ffffff;
+  --foreground: #223029;
+  --ink: #1d2924;
+  --muted: #718078;
+  --line: #dedfd9;
+  --soft: #e9ebe6;
+  --accent: #d76836;
+  --accent-dark: #a94722;
+  --accent-soft: #f9e9df;
+  --success: #2f7656;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: -0.008em;
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 68%, white);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: #efd0be;
+  color: var(--ink);
+}
+
+.app-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper-strong);
+  box-shadow: 0 1px 1px rgb(29 41 36 / 0.03), 0 10px 30px rgb(29 41 36 / 0.035);
+}
+
+.app-eyebrow {
+  color: var(--accent-dark);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.app-button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 10px;
+  background: var(--ink);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 650;
+  min-height: 40px;
+  padding: 0.625rem 1rem;
+  transition: transform 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+.app-button-primary:hover {
+  background: #2c3d35;
+  box-shadow: 0 5px 14px rgb(29 41 36 / 0.15);
+  transform: translateY(-1px);
+}
+
+.app-button-primary:disabled {
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.42;
+  transform: none;
+}
+
+.app-button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper-strong);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.6rem 0.9rem;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.app-button-secondary:hover {
+  background: #f7f6f2;
+  border-color: #c8ccc5;
+}
+
+.app-button-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.app-input {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper-strong);
+  color: var(--ink);
+  padding: 0.65rem 0.8rem;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.app-input:focus {
+  border-color: color-mix(in srgb, var(--accent) 65%, var(--line));
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 /* Hide number input spinners */
