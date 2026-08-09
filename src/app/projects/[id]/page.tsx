@@ -316,13 +316,17 @@ function buildSheetOperationText(summary: PartOperationSummary, units: UnitSyste
 function getPartThicknessDisplay(
   cut: Pick<PlacedCut, 't'>,
   summary: PartOperationSummary | null,
-  units: UnitSystem
+  units: UnitSystem,
+  sheetThickness: number
 ): string {
   if (summary?.thicknessMm) {
     return formatPartThickness(summary.thicknessMm, units);
   }
   if (cut.t > 0) {
     return units === 'mm' ? cut.t.toFixed(1) : toFraction(cut.t);
+  }
+  if (sheetThickness > 0) {
+    return units === 'mm' ? sheetThickness.toFixed(1) : toFraction(sheetThickness);
   }
   return '';
 }
@@ -452,19 +456,19 @@ function CutRow({
 
   return (
     <div
-      className={`rounded-md transition-all group/row ${
+      className={`group/row border-b border-slate-100 transition-colors ${
         isDropTarget
-          ? 'bg-indigo-50 ring-2 ring-indigo-300 ring-offset-1'
+          ? 'bg-indigo-50'
           : selected
-          ? 'bg-indigo-50 ring-1 ring-indigo-200'
-          : inGroup ? 'bg-white hover:bg-slate-50' : 'bg-slate-50 hover:bg-white'
+          ? 'bg-indigo-50'
+          : inGroup ? 'bg-white hover:bg-slate-50' : 'bg-transparent hover:bg-slate-50'
       }`}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
       {/* Row 1: drag handle + checkbox + label + delete */}
-      <div className="flex items-center gap-2 px-2 pt-2 pb-0.5">
+      <div className="flex items-center gap-2 px-1 py-1.5 pb-0.5">
         <div
           draggable
           onDragStart={(e) => { e.stopPropagation(); onDragStart(); }}
@@ -499,11 +503,11 @@ function CutRow({
               onChange={(e) => setLabelDraft(e.target.value)}
               onBlur={commitLabel}
               onKeyDown={(e) => { if (e.key === 'Enter') commitLabel(); if (e.key === 'Escape') { setEditingLabel(false); setLabelDraft(cut.label); } }}
-              className="w-full text-sm font-medium px-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-500"
+              className="w-full border-b border-slate-300 bg-transparent px-0.5 text-xs font-medium focus:border-slate-500 focus:outline-none"
             />
           ) : (
             <button
-              className="text-sm font-medium text-slate-700 text-left w-full flex items-center gap-1 hover:text-slate-900 group/lbl"
+              className="group/lbl flex w-full items-center gap-1 text-left text-xs font-medium text-slate-700 hover:text-slate-900"
               onClick={() => { setEditingLabel(true); setLabelDraft(cut.label); }}
               title="Click to rename"
             >
@@ -518,18 +522,17 @@ function CutRow({
         <button
           onClick={onRemove}
           title="Delete part"
-          className="shrink-0 inline-flex items-center gap-1 rounded border border-slate-200 px-1.5 py-1 text-xs font-medium text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors"
+          className="inline-flex shrink-0 items-center p-1 text-slate-300 transition-colors hover:text-red-500"
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16" />
           </svg>
-          <span>Delete</span>
         </button>
       </div>
 
       {/* Row 2: dims · T · mat · qty + DXF + STEP badge */}
-      <div className="flex items-center gap-1.5 px-2 pb-2 pl-7 flex-wrap">
-        <span className="text-xs text-slate-400 shrink-0">{dim(cut.l)} × {dim(cut.w)}</span>
+      <div className="flex flex-wrap items-center gap-1.5 px-1 pb-1.5 pl-6">
+        <span className="shrink-0 text-[11px] text-slate-400">{dim(cut.l)} × {dim(cut.w)}</span>
 
         <span className="text-slate-200 text-xs shrink-0">·</span>
 
@@ -542,16 +545,16 @@ function CutRow({
             onChange={(e) => setTDraft(e.target.value)}
             onBlur={commitT}
             onKeyDown={(e) => { if (e.key === 'Enter') commitT(); if (e.key === 'Escape') { setEditingT(false); setTDraft(String(cut.t)); } }}
-            className="w-16 shrink-0 text-xs text-center px-1 py-0.5 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className="w-14 shrink-0 border-b border-slate-300 bg-transparent px-1 text-center text-[11px] focus:border-slate-500 focus:outline-none"
           />
         ) : (
           <button
             onClick={() => { setEditingT(true); setTDraft(String(cut.t)); }}
             title="Click to set thickness (0 = any)"
-            className={`shrink-0 text-xs rounded px-1.5 py-0.5 transition-colors ${
+            className={`shrink-0 px-1 text-[11px] transition-colors ${
               cut.t > 0
-                ? 'font-medium text-slate-600 bg-slate-100 hover:bg-slate-200'
-                : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'
+                ? 'font-medium text-slate-600 hover:text-slate-900'
+                : 'text-slate-300 hover:text-slate-500'
             }`}
           >
             T: {cut.t > 0 ? dim(cut.t) : '–'}
@@ -565,7 +568,7 @@ function CutRow({
             value={cut.mat || ''}
             onChange={(e) => { onChange({ ...cut, mat: e.target.value }); setEditingMat(false); }}
             onBlur={() => setEditingMat(false)}
-            className="shrink-0 text-xs px-1 py-0.5 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-500 bg-white"
+            className="shrink-0 border-b border-slate-300 bg-white px-1 text-[11px] focus:border-slate-500 focus:outline-none"
           >
             <option value="">Any material</option>
             {MATERIALS.map((m) => <option key={m} value={m}>{m}</option>)}
@@ -574,10 +577,10 @@ function CutRow({
           <button
             onClick={() => setEditingMat(true)}
             title="Click to set material"
-            className={`shrink-0 text-xs rounded px-1.5 py-0.5 transition-colors ${
+            className={`shrink-0 px-1 text-[11px] transition-colors ${
               cut.mat
-                ? 'font-medium text-slate-600 bg-slate-100 hover:bg-slate-200'
-                : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'
+                ? 'font-medium text-slate-600 hover:text-slate-900'
+                : 'text-slate-300 hover:text-slate-500'
             }`}
           >
             {cut.mat || 'Any mat'}
@@ -593,13 +596,13 @@ function CutRow({
             onChange={(e) => setQtyDraft(e.target.value)}
             onBlur={commitQty}
             onKeyDown={(e) => { if (e.key === 'Enter') commitQty(); if (e.key === 'Escape') { setEditingQty(false); setQtyDraft(String(cut.qty)); } }}
-            className="w-14 shrink-0 text-xs text-center px-1 py-0.5 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className="w-12 shrink-0 border-b border-slate-300 bg-transparent px-1 text-center text-[11px] focus:border-slate-500 focus:outline-none"
           />
         ) : (
           <button
             onClick={() => { setEditingQty(true); setQtyDraft(String(cut.qty)); }}
             title="Click to change quantity"
-            className="shrink-0 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded px-1.5 py-0.5 transition-colors"
+            className="shrink-0 px-1 text-[11px] font-medium text-slate-600 transition-colors hover:text-slate-900"
           >
             ×{cut.qty}
           </button>
@@ -609,7 +612,7 @@ function CutRow({
         {(cut.stepFileId || cut.stepSessionId) && (
           <button
             onClick={onDownloadDxf}
-            className="shrink-0 opacity-0 group-hover/row:opacity-100 transition-opacity text-xs text-slate-400 hover:text-slate-700 px-1.5 py-0.5 border border-slate-200 rounded"
+            className="shrink-0 px-1 text-[11px] text-slate-400 opacity-0 transition-opacity hover:text-slate-700 group-hover/row:opacity-100"
             title="Download DXF"
           >
             ↓ DXF
@@ -878,17 +881,17 @@ function GroupCard({
 
   return (
     <div
-      className={`rounded-lg border-2 transition-all ${
+      className={`border-l-2 transition-colors ${
         isDropTarget
-          ? 'border-indigo-400 bg-indigo-50 shadow-md shadow-indigo-100'
+          ? 'border-indigo-500 bg-indigo-50'
           : 'border-indigo-200 bg-white hover:border-indigo-300'
       }`}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      <div className={`flex items-center gap-2 px-3 py-2 rounded-t-lg border-b ${
-        isDropTarget ? 'bg-indigo-100 border-indigo-300' : 'bg-indigo-50 border-indigo-100'
+      <div className={`flex items-center gap-2 border-b px-2 py-1.5 ${
+        isDropTarget ? 'border-indigo-200 bg-indigo-50' : 'border-slate-100 bg-[#fafafa]'
       }`}>
         <button
           onClick={() => setCollapsed(c => !c)}
@@ -907,7 +910,7 @@ function GroupCard({
             onChange={(e) => setNameDraft(e.target.value)}
             onBlur={commitName}
             onKeyDown={(e) => { if (e.key === 'Enter') commitName(); if (e.key === 'Escape') { setEditingName(false); setNameDraft(name); } }}
-            className="flex-1 text-xs font-semibold text-indigo-700 bg-white border border-indigo-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            className="flex-1 border-b border-indigo-300 bg-transparent px-1 text-xs font-semibold text-indigo-700 focus:border-indigo-500 focus:outline-none"
           />
         ) : (
           <button
@@ -930,18 +933,18 @@ function GroupCard({
 
         {/* Group quantity multiplier */}
         <div
-          className={`flex items-center gap-1 shrink-0 rounded border px-1.5 py-0.5 transition-colors text-xs ${multiplier > 1 ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-indigo-200'}`}
+          className={`flex shrink-0 items-center gap-1 border-l pl-1.5 text-xs transition-colors ${multiplier > 1 ? 'border-indigo-300 text-indigo-700' : 'border-slate-200 text-indigo-400'}`}
           title="Multiply all quantities in this group when optimizing"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className={`font-medium ${multiplier > 1 ? 'text-white' : 'text-indigo-400'}`}>×</span>
+          <span className="font-medium">×</span>
           <input
             type="number"
             min={1}
             step={1}
             value={multiplier}
             onChange={(e) => onMultiplierChange(Math.max(1, parseInt(e.target.value) || 1))}
-            className={`w-8 text-center outline-none bg-transparent font-semibold ${multiplier > 1 ? 'text-white' : 'text-indigo-400'}`}
+            className="w-8 bg-transparent text-center font-semibold outline-none"
           />
         </div>
 
@@ -955,7 +958,7 @@ function GroupCard({
       </div>
 
       {!collapsed && (
-        <div className="p-1.5 space-y-1">
+        <div className="pl-2">
           {items.map((cut) => (
             <div key={cut.id} className="flex items-center gap-1 group/grow">
               <div className="flex-1 min-w-0">
@@ -1722,6 +1725,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       y: number,
       width: number,
       bottom: number,
+      sheetThickness: number,
       operationSummaries: Map<string, PartOperationSummary | null> = new Map()
     ) => {
       const colNumber = 28;
@@ -1750,7 +1754,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         const cut = cuts[index];
         const sizeText = `${dim(Math.max(cut.pw, cut.ph))} × ${dim(Math.min(cut.pw, cut.ph))}`;
         const operationSummary = operationSummaries.get(cut.instanceKey) ?? null;
-        const thicknessText = getPartThicknessDisplay(cut, operationSummary, units);
+        const thicknessText = getPartThicknessDisplay(cut, operationSummary, units, sheetThickness);
         const exportLabel = buildExportPartLabel(cut, stepFilenameMap);
         const labelLines = pdf.splitTextToSize(exportLabel, partColWidth - 8) as string[];
         const operationLines = buildOperationLines(
@@ -1901,7 +1905,16 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         pdf.text(String(cut.partNumber), centerX, centerY + badgeRadius * 0.35, { align: 'center' });
       });
 
-      let nextRow = renderSheetTable(numberedCuts, 0, tableX, tableTop, tableRightWidth, tableBottom, operationSummaries);
+      let nextRow = renderSheetTable(
+        numberedCuts,
+        0,
+        tableX,
+        tableTop,
+        tableRightWidth,
+        tableBottom,
+        sheet.t,
+        operationSummaries
+      );
       while (nextRow < numberedCuts.length) {
         pdf.addPage('letter', 'landscape');
         pdf.setFont('helvetica', 'bold');
@@ -1919,6 +1932,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           margin + 16,
           pageWidth - margin * 2,
           pageHeight - margin,
+          sheet.t,
           operationSummaries
         );
       }
@@ -1949,7 +1963,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           partNumber: index + 1,
         })) as NumberedPlacedCut[];
 
-      renderSheetTable(tableCuts, 0, margin, margin + 20, pageWidth - margin * 2, pageHeight - margin);
+      renderSheetTable(tableCuts, 0, margin, margin + 20, pageWidth - margin * 2, pageHeight - margin, 0);
     }
 
     return pdf;
@@ -2126,61 +2140,46 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const canOptimize = cuts.length > 0 && stocks.length > 0;
 
   return (
-    <div className="flex min-h-[calc(100vh-68px)] flex-col bg-[#f5f4f0] xl:h-[calc(100vh-68px)] xl:overflow-hidden">
+    <div className="flex min-h-[calc(100vh-68px)] flex-col bg-white xl:h-[calc(100vh-68px)] xl:overflow-hidden">
       {/* Project workspace header */}
-      <div className="shrink-0 border-b border-[var(--line)] bg-white px-4 py-3 lg:px-6">
-        <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
-          <div className="flex min-w-0 items-center gap-3">
+      <div className="shrink-0 border-b border-[var(--line)] bg-white px-3 py-2 lg:px-4">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 items-center gap-2">
             <Link
               href="/dashboard"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--line)] text-[var(--muted)] hover:bg-black/[0.03] hover:text-[var(--ink)]"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[var(--muted)] hover:bg-black/[0.04] hover:text-[var(--ink)]"
               aria-label="Back to projects"
             >
               ←
             </Link>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="truncate text-base font-semibold tracking-[-0.02em] text-[var(--ink)]">{project.name}</h1>
-                <span className={`h-1.5 w-1.5 rounded-full ${isDirty ? 'bg-[var(--accent)]' : 'bg-[var(--success)]'}`} />
+                <h1 className="truncate text-sm font-semibold text-[var(--ink)]">{project.name}</h1>
                 <span className="text-[10px] font-medium text-[var(--muted)]">
                   {saving ? 'Saving…' : isDirty ? 'Unsaved changes' : 'Saved'}
                 </span>
               </div>
-              <p className="mt-0.5 text-xs text-[var(--muted)]">
+              <p className="text-[11px] text-[var(--muted)]">
                 {totalPartCount} part{totalPartCount === 1 ? '' : 's'} · {stocks.length} stock type{stocks.length === 1 ? '' : 's'}
               </p>
             </div>
           </div>
 
-          <div className="order-3 flex items-center gap-2 overflow-x-auto lg:order-none lg:mx-auto">
-            <span className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${cuts.length ? 'bg-[#e5f1ea] text-[var(--success)]' : 'bg-[#eef0eb] text-[var(--muted)]'}`}>
-              <b>{cuts.length ? '✓' : '1'}</b> Parts
-            </span>
-            <span className="h-px w-5 shrink-0 bg-[var(--line)]" />
-            <span className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${stocks.length ? 'bg-[#e5f1ea] text-[var(--success)]' : 'bg-[#eef0eb] text-[var(--muted)]'}`}>
-              <b>{stocks.length ? '✓' : '2'}</b> Stock
-            </span>
-            <span className="h-px w-5 shrink-0 bg-[var(--line)]" />
-            <span className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${result ? 'bg-[var(--accent-soft)] text-[var(--accent-dark)]' : 'bg-[#eef0eb] text-[var(--muted)]'}`}>
-              <b>3</b> Layout
-            </span>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2">
-            <UnitToggle value={units} onChange={setUnits} />
+          <div className="flex shrink-0 items-center gap-1.5">
+            <UnitToggle value={units} onChange={setUnits} compact />
             <button
               onClick={downloadProjectBundle}
               disabled={exportingBundle}
-              className="app-button-secondary min-h-9 py-1.5 text-xs"
+              className="rounded px-2 py-1.5 text-[11px] font-medium text-[var(--muted)] hover:bg-black/[0.04] hover:text-[var(--ink)] disabled:opacity-40"
             >
               {exportingBundle ? 'Exporting…' : 'Project bundle'}
             </button>
             <button
               onClick={saveProject}
               disabled={saving || !isDirty}
-              className="app-button-primary min-h-9 py-1.5 text-xs"
+              className="rounded-md bg-[var(--ink)] px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-[#2c3d35] disabled:cursor-not-allowed disabled:opacity-35"
             >
-              {saving ? 'Saving…' : isDirty ? 'Save changes' : 'Saved'}
+              {saving ? 'Saving…' : 'Save'}
             </button>
           </div>
         </div>
@@ -2189,35 +2188,21 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       <div className="flex flex-col xl:min-h-0 xl:flex-1 xl:flex-row">
 
       {/* ── LEFT PANEL ──────────────────────────────────────────────────────── */}
-      <aside className="flex w-full flex-shrink-0 flex-col gap-4 border-r border-[var(--line)] bg-[#faf9f6] p-4 text-sm xl:w-[460px] xl:overflow-y-auto">
-
-        <div className="order-0 rounded-xl border border-[var(--line)] bg-white p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold text-[var(--ink)]">Project setup</p>
-              <p className="mt-0.5 text-[11px] text-[var(--muted)]">Parts first, then the sheets you have on hand.</p>
-            </div>
-            <div className="flex -space-x-1">
-              <span className={`h-2.5 w-2.5 rounded-full ring-2 ring-white ${cuts.length ? 'bg-[var(--success)]' : 'bg-[#d9dcd6]'}`} />
-              <span className={`h-2.5 w-2.5 rounded-full ring-2 ring-white ${stocks.length ? 'bg-[var(--success)]' : 'bg-[#d9dcd6]'}`} />
-              <span className={`h-2.5 w-2.5 rounded-full ring-2 ring-white ${result ? 'bg-[var(--accent)]' : 'bg-[#d9dcd6]'}`} />
-            </div>
-          </div>
-        </div>
+      <aside className="flex w-full flex-shrink-0 flex-col border-r border-[var(--line)] bg-white text-sm xl:w-[410px] xl:overflow-y-auto">
 
         {/* Settings */}
-        <details className="group order-3 rounded-xl border border-[var(--line)] bg-white">
-          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3.5 [&::-webkit-details-marker]:hidden">
+        <details className="group order-0 border-b border-[var(--line)]">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 [&::-webkit-details-marker]:hidden">
             <div>
               <h2 className="text-xs font-semibold text-[var(--ink)]">Cut settings</h2>
-              <p className="mt-0.5 text-[10px] text-[var(--muted)]">{kerf}&quot; kerf · {padding}&quot; sheet margin</p>
+              <p className="text-[10px] text-[var(--muted)]">{kerf}&quot; kerf · {padding}&quot; margin</p>
             </div>
-            <svg className="h-4 w-4 text-[var(--muted)] transition-transform group-open:rotate-180" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg className="h-3.5 w-3.5 text-[var(--muted)] transition-transform group-open:rotate-180" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="m4 6 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </summary>
-          <div className="space-y-3 border-t border-[var(--line)] px-4 py-4">
-          <div className="grid grid-cols-2 gap-3 text-xs">
+          <div className="space-y-2.5 border-t border-[var(--line)] bg-[#fcfcfa] px-4 py-3">
+          <div className="grid grid-cols-2 gap-2.5 text-xs">
             <div>
               <label className="mb-1 block text-[var(--muted)]">Blade kerf</label>
               <div className="flex items-center gap-1">
@@ -2227,7 +2212,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   min={0}
                   value={kerf}
                   onChange={(e) => setKerf(parseFloat(e.target.value) || 0)}
-                  className="w-20 rounded-lg border border-[var(--line)] bg-[#f7f7f4] px-2 py-1.5 text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                  className="w-20 rounded border border-[var(--line)] bg-white px-2 py-1 text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
                 />
                 <span className="text-[10px] text-[var(--muted)]">in</span>
               </div>
@@ -2239,7 +2224,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   <button
                     key={k.value}
                     onClick={() => setKerf(k.value)}
-                    className={`rounded-lg px-2 py-1.5 text-[10px] ${kerf === k.value ? 'bg-[var(--ink)] text-white' : 'border border-[var(--line)] text-[var(--muted)] hover:bg-black/[0.03]'}`}
+                    className={`rounded px-2 py-1 text-[10px] ${kerf === k.value ? 'bg-[var(--ink)] text-white' : 'border border-[var(--line)] text-[var(--muted)] hover:bg-black/[0.03]'}`}
                   >
                     {k.label}
                   </button>
@@ -2247,7 +2232,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 text-xs">
+          <div className="grid grid-cols-2 gap-2.5 text-xs">
             <div>
               <label className="mb-1 block text-[var(--muted)]">Sheet margin</label>
               <div className="flex items-center gap-1">
@@ -2257,7 +2242,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   min={0}
                   value={padding}
                   onChange={(e) => setPadding(parseFloat(e.target.value) || 0)}
-                  className="w-20 rounded-lg border border-[var(--line)] bg-[#f7f7f4] px-2 py-1.5 text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                  className="w-20 rounded border border-[var(--line)] bg-white px-2 py-1 text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
                 />
                 <span className="text-[10px] text-[var(--muted)]">in</span>
               </div>
@@ -2269,7 +2254,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   <button
                     key={p.value}
                     onClick={() => setPadding(p.value)}
-                    className={`rounded-lg px-2 py-1.5 text-[10px] ${padding === p.value ? 'bg-[var(--ink)] text-white' : 'border border-[var(--line)] text-[var(--muted)] hover:bg-black/[0.03]'}`}
+                    className={`rounded px-2 py-1 text-[10px] ${padding === p.value ? 'bg-[var(--ink)] text-white' : 'border border-[var(--line)] text-[var(--muted)] hover:bg-black/[0.03]'}`}
                   >
                     {p.label}
                   </button>
@@ -2291,16 +2276,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         </details>
 
         {/* Stock */}
-        <div className="order-2 space-y-3 rounded-xl border border-[var(--line)] bg-white p-4">
-          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
-            <div className="flex gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#eef0eb] text-[11px] font-bold text-[var(--foreground)]">2</span>
-              <div>
-                <h2 className="text-xs font-semibold text-[var(--ink)]">Material &amp; stock</h2>
-                <p className="mt-0.5 text-[10px] text-[var(--muted)]">Add the sheets available for this job.</p>
-              </div>
+        <div className="order-2 space-y-2 border-b border-[var(--line)] px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-xs font-semibold text-[var(--ink)]">Material &amp; stock</h2>
+              <p className="text-[10px] text-[var(--muted)]">{stocks.length || 'No'} stock type{stocks.length === 1 ? '' : 's'}</p>
             </div>
-            <div className="flex w-full gap-1.5 sm:w-auto">
+            <div className="flex min-w-0 gap-1">
               <select
                 onChange={(e) => {
                   if (e.target.value) {
@@ -2309,13 +2291,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     e.target.value = '';
                   }
                 }}
-                className="min-w-0 flex-1 rounded-lg border border-[var(--line)] bg-[#f7f7f4] px-2 py-1.5 text-[11px] text-[var(--foreground)] sm:flex-none"
+                className="min-w-0 rounded border border-[var(--line)] bg-white px-2 py-1 text-[10px] text-[var(--foreground)]"
                 defaultValue=""
               >
                 <option value="">Add preset…</option>
                 {STOCK_PRESETS.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
               </select>
-              <button onClick={() => addStock()} className="rounded-lg border border-dashed border-[#c5c9c2] px-2 py-1.5 text-[11px] font-semibold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]">+ Custom</button>
+              <button onClick={() => addStock()} className="rounded px-1.5 py-1 text-[10px] font-medium text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]">+ Custom</button>
             </div>
           </div>
           <table className="w-full text-xs">
@@ -2368,19 +2350,21 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         </div>
 
         {/* Parts */}
-        <div className="order-1 space-y-3 rounded-xl border border-[var(--line)] bg-white p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#eef0eb] text-[11px] font-bold text-[var(--foreground)]">1</span>
-              <div>
-                <h2 className="text-xs font-semibold text-[var(--ink)]">Parts to cut</h2>
-                <p className="mt-0.5 text-[10px] text-[var(--muted)]">{totalPartCount || 'No'} part{totalPartCount === 1 ? '' : 's'} in this project.</p>
-              </div>
+        <details open className="group order-1 border-b border-[var(--line)]">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 [&::-webkit-details-marker]:hidden">
+            <div>
+              <h2 className="text-xs font-semibold text-[var(--ink)]">Parts to cut</h2>
+              <p className="text-[10px] text-[var(--muted)]">{totalPartCount || 'No'} part{totalPartCount === 1 ? '' : 's'}</p>
             </div>
-            <div className="flex gap-1.5">
+            <svg className="h-3.5 w-3.5 text-[var(--muted)] transition-transform group-open:rotate-180" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="m4 6 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </summary>
+          <div className="space-y-2 border-t border-[var(--line)] px-4 py-2.5">
+            <div className="flex justify-end gap-1">
               <Link
                 href={`/projects/${id}/step`}
-                className="rounded-lg bg-[var(--accent-soft)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--accent-dark)] hover:bg-[#f4d9c9]"
+                className="rounded px-2 py-1 text-[10px] font-medium text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]"
               >
                 Import STEP
               </Link>
@@ -2398,31 +2382,31 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     mat: '',
                   },
                 ])}
-                className="rounded-lg border border-dashed border-[#c5c9c2] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--foreground)] hover:bg-black/[0.03]"
+                className="rounded px-2 py-1 text-[10px] font-medium text-[var(--foreground)] hover:bg-black/[0.04]"
               >
                 + Manual
               </button>
             </div>
+            <CutList
+              cuts={cuts}
+              dim={dim}
+              onChange={setCuts}
+              onRemove={removeCut}
+              onDownloadDxf={downloadPartDxf}
+              groupMultipliers={groupMultipliers}
+              onMultiplierChange={(group, mult) =>
+                setGroupMultipliers((prev) => ({ ...prev, [group]: mult }))
+              }
+            />
           </div>
-          <CutList
-            cuts={cuts}
-            dim={dim}
-            onChange={setCuts}
-            onRemove={removeCut}
-            onDownloadDxf={downloadPartDxf}
-            groupMultipliers={groupMultipliers}
-            onMultiplierChange={(group, mult) =>
-              setGroupMultipliers((prev) => ({ ...prev, [group]: mult }))
-            }
-          />
-        </div>
+        </details>
 
         {/* Optimize */}
-        <div className="order-4 rounded-xl border border-[#d7d9d2] bg-white/95 p-3 shadow-[0_-8px_24px_rgba(29,41,36,0.07)] backdrop-blur xl:sticky xl:bottom-0">
+        <div className="order-4 border-b border-[var(--line)] bg-white px-4 py-3 xl:sticky xl:bottom-0">
           <button
             onClick={() => handleOptimize(false)}
             disabled={!canOptimize}
-            className="app-button-primary w-full bg-[var(--accent)] hover:bg-[var(--accent-dark)]"
+            className="flex w-full items-center gap-2 rounded-md bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white hover:bg-[var(--accent-dark)] disabled:cursor-not-allowed disabled:opacity-35"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M4 5h7v6H4zM13 5h7v3h-7zM13 10h7v9h-7zM4 13h7v6H4z" strokeLinejoin="round" />
@@ -2443,20 +2427,20 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
         {/* Results table */}
         {result && result.sheets.length > 0 && (
-          <div className="order-5 space-y-3 rounded-xl border border-[var(--line)] bg-white p-4">
+          <div className="order-5 space-y-2 border-b border-[var(--line)] bg-white px-4 py-3">
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-xs font-semibold text-[var(--ink)]">Shop output</h2>
                 <p className="mt-0.5 text-[10px] text-[var(--muted)]">Download plans or CNC-ready files.</p>
               </div>
-              <span className="rounded-full bg-[#eef0eb] px-2 py-1 text-[10px] font-semibold text-[var(--foreground)]">{result.sheets.reduce((acc, s) => acc + s.cuts.length, 0)} cuts</span>
+              <span className="text-[10px] font-medium text-[var(--muted)]">{result.sheets.reduce((acc, s) => acc + s.cuts.length, 0)} cuts</span>
             </div>
-            <details className="group rounded-lg border border-[var(--line)]">
-              <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-xs font-semibold text-[var(--foreground)] [&::-webkit-details-marker]:hidden">
+            <details className="group border-y border-[var(--line)]">
+              <summary className="flex cursor-pointer list-none items-center justify-between py-2 text-xs font-medium text-[var(--foreground)] [&::-webkit-details-marker]:hidden">
                 Sheet-by-sheet cut list
                 <span className="text-[var(--muted)] transition-transform group-open:rotate-180">⌄</span>
               </summary>
-              <div className="space-y-3 border-t border-[var(--line)] p-3">
+              <div className="space-y-3 border-t border-[var(--line)] py-2.5">
               {result.sheets.map((sheet, i) => {
                 const canExportSheet = Boolean(buildSheetContext(i)?.payload);
                 return (
@@ -2552,21 +2536,21 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             )}
             </details>
 
-            <div className="grid grid-cols-3 gap-2">
-              <button onClick={downloadPDF} className="rounded-lg border border-[var(--line)] px-2 py-2 text-xs font-semibold text-[var(--foreground)] hover:bg-black/[0.03]">PDF</button>
-              <button onClick={downloadCutListCSV} className="rounded-lg border border-[var(--line)] px-2 py-2 text-xs font-semibold text-[var(--foreground)] hover:bg-black/[0.03]">CSV</button>
-              <button onClick={downloadLayoutSVG} className="rounded-lg border border-[var(--line)] px-2 py-2 text-xs font-semibold text-[var(--foreground)] hover:bg-black/[0.03]">SVG</button>
+            <div className="grid grid-cols-3 gap-1">
+              <button onClick={downloadPDF} className="rounded border border-[var(--line)] px-2 py-1.5 text-[11px] font-medium text-[var(--foreground)] hover:bg-black/[0.03]">PDF</button>
+              <button onClick={downloadCutListCSV} className="rounded border border-[var(--line)] px-2 py-1.5 text-[11px] font-medium text-[var(--foreground)] hover:bg-black/[0.03]">CSV</button>
+              <button onClick={downloadLayoutSVG} className="rounded border border-[var(--line)] px-2 py-1.5 text-[11px] font-medium text-[var(--foreground)] hover:bg-black/[0.03]">SVG</button>
               <button
                 onClick={() => downloadAllSheetDxfs()}
                 disabled={exportingSheetDxfs || exportableSheetIndices.length === 0}
-                className="col-span-3 rounded-lg border border-[var(--line)] px-2 py-2 text-xs font-semibold text-[var(--foreground)] hover:bg-black/[0.03] disabled:opacity-40"
+                className="col-span-3 rounded border border-[var(--line)] px-2 py-1.5 text-[11px] font-medium text-[var(--foreground)] hover:bg-black/[0.03] disabled:opacity-40"
               >
                 {exportingSheetDxfs ? 'Preparing DXFs…' : 'Download all sheet DXFs'}
               </button>
               <button
                 onClick={() => downloadAllSheetDxfs('vcarve')}
                 disabled={exportingVcarveDxfs || exportableSheetIndices.length === 0}
-                className="col-span-3 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-40"
+                className="col-span-3 rounded border border-amber-200 px-2 py-1.5 text-[11px] font-medium text-amber-800 hover:bg-amber-50 disabled:opacity-40"
               >
                 {exportingVcarveDxfs ? 'Preparing VCarve DXFs…' : 'Download VCarve DXFs'}
               </button>
@@ -2576,34 +2560,27 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       </aside>
 
       {/* ── RIGHT PANEL — Interactive Layout Editor ──────────────────────────── */}
-      <section className="min-h-[520px] min-w-0 flex-1 overflow-auto bg-[#eeefeb] p-4 lg:p-6 xl:min-h-0">
+      <section className="min-h-[520px] min-w-0 flex-1 overflow-auto bg-[#f3f3f0] xl:min-h-0 xl:p-3">
         {!result ? (
           <div className="flex h-full min-h-[480px] items-center justify-center">
-            <div className="max-w-md text-center">
-              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#d7d9d3] bg-white text-[var(--accent-dark)] shadow-sm">
-                <svg className="h-8 w-8" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3">
+            <div className="max-w-sm px-6 text-center">
+              <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center text-[var(--muted)]">
+                <svg className="h-7 w-7" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3">
                   <rect x="4" y="5" width="24" height="22" rx="2" />
                   <path d="M8 9h8v6H8zM19 9h5v10h-5zM8 18h8v5H8zM19 22h5" strokeLinejoin="round" />
                 </svg>
               </div>
-              <p className="app-eyebrow">Layout preview</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-[var(--ink)]">Ready when your inputs are</h2>
-              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[var(--muted)]">
+              <h2 className="text-lg font-medium text-[var(--ink)]">Ready for a layout</h2>
+              <p className="mx-auto mt-2 max-w-xs text-sm leading-5 text-[var(--muted)]">
                 Add the parts you need and the stock you have. Kerf will arrange everything here with blade width and margins accounted for.
               </p>
-              <div className="mt-6 flex items-center justify-center gap-4 text-xs text-[var(--muted)]">
-                <span className={cuts.length ? 'text-[var(--success)]' : ''}>{cuts.length ? '✓' : '○'} Parts</span>
-                <span className={stocks.length ? 'text-[var(--success)]' : ''}>{stocks.length ? '✓' : '○'} Stock</span>
-                <span>○ Layout</span>
-              </div>
             </div>
           </div>
         ) : result.sheets.length === 0 && excludedCuts.length === 0 ? (
           <div className="flex h-full min-h-[480px] items-center justify-center">
-            <div className="max-w-sm rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm">
-              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-600">!</div>
-              <h2 className="font-semibold text-[var(--ink)]">These parts don&apos;t fit yet</h2>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Check the stock dimensions or add a larger sheet, then optimize again.</p>
+            <div className="max-w-sm px-6 text-center">
+              <div className="mb-2 text-sm text-red-600">Couldn&apos;t place these parts</div>
+              <p className="text-sm leading-5 text-[var(--muted)]">Check the stock dimensions or add a larger sheet, then optimize again.</p>
             </div>
           </div>
         ) : (

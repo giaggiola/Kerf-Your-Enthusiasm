@@ -481,6 +481,7 @@ function packSheet(
   const sheet: Sheet = {
     w: stock.w,
     l: stock.l,
+    t: stock.t,
     name: stock.name,
     mat: stock.mat,
     cuts: [],
@@ -676,6 +677,7 @@ export function optimizeCutsShelf(
     const sheet: Sheet = {
       w: stock.w,
       l: stock.l,
+      t: stock.t,
       name: stock.name,
       mat: stock.mat,
       cuts: [],
@@ -873,6 +875,7 @@ export function optimizeCutsMaxRects(
         bestSheet = {
           w: stock.w,
           l: stock.l,
+          t: stock.t,
           name: stock.name,
           mat: stock.mat,
           cuts: placed.map(r => {
@@ -1200,6 +1203,7 @@ export function optimizeCutsOptimal(
       const sheet: Sheet = {
         w: stock.w,
         l: stock.l,
+        t: stock.t,
         name: stock.name,
         mat: stock.mat,
         cuts: result.placed,

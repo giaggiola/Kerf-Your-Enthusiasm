@@ -85,6 +85,7 @@ export interface Rect {
 export interface Sheet {
   w: number;
   l: number;
+  t: number;  // stock thickness in project units (0 = unspecified)
   name: string;
   mat: string;
   cuts: PlacedCut[];

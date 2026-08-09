@@ -104,6 +104,7 @@ console.log('\nTest 1: Single cut');
   assertEq(r.sheets.length, 1, 'one sheet used');
   assertEq(r.unplaced.length, 0, 'zero unplaced');
   assertEq(r.sheets[0].cuts.length, 1, 'one cut placed');
+  assertEq(r.sheets[0].t, STOCK_PLYWOOD.t, 'sheet keeps its stock thickness');
   validateResult(r, 0.125, 'single-cut');
 }
 
@@ -408,7 +409,7 @@ console.log('\nTest 17: Re-optimize with pinned cut at non-corner position');
 
 console.log('\nTest 18: isOutOfBounds — no false positive from FP rounding');
 {
-  const sheet: Sheet = { w: 48, l: 96, name: 'S', mat: 'plywood', cuts: [], rects: [] };
+  const sheet: Sheet = { w: 48, l: 96, t: 0.75, name: 'S', mat: 'plywood', cuts: [], rects: [] };
   // Part that is exactly flush to the right edge — FP arithmetic can make x+pw = 48 + epsilon
   const flush: PlacedCut = {
     id: 1, label: 'A', l: 10, w: 48, t: 0.75, qty: 1, mat: 'plywood',
