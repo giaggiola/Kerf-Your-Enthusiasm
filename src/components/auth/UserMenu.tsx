@@ -22,7 +22,7 @@ export function UserMenu() {
   }, []);
 
   if (isPending) {
-    return <div className="w-8 h-8 rounded-full bg-slate-200 animate-pulse" />;
+    return <div className="w-8 h-8 rounded-none bg-slate-200 animate-pulse" />;
   }
 
   if (!session) {
@@ -38,7 +38,7 @@ export function UserMenu() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-black/[0.04]"
+        className="flex items-center gap-2 rounded-none p-1 transition-colors hover:bg-black/[0.04]"
       >
         {session.user.image ? (
           <Image
@@ -46,10 +46,10 @@ export function UserMenu() {
             alt={session.user.name || 'User'}
             width={32}
             height={32}
-            className="w-8 h-8 rounded-full"
+            className="w-8 h-8 rounded-none"
           />
         ) : (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-sm font-medium text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-none bg-[var(--ink)] text-sm font-medium text-white">
             {session.user.name?.charAt(0) || session.user.email?.charAt(0) || 'U'}
           </div>
         )}

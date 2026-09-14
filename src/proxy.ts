@@ -4,8 +4,7 @@ import { getSessionCookie } from 'better-auth/cookies';
 /**
  * UX-only redirect for the signed-in pages.
  *
- * This runs on the Edge runtime, where the SQLite database is not reachable, so
- * it can only check that a session cookie is PRESENT — it cannot validate the
+ * This only checks that a session cookie is PRESENT; it does not validate the
  * signature or the allowlist. It is not a security boundary. Real authorization
  * happens in `getSession()`, which every /api/v1 handler calls; this just saves
  * a signed-out visitor from landing on a page that would only render errors.
@@ -17,7 +16,7 @@ import { getSessionCookie } from 'better-auth/cookies';
  * Previous behaviour (disabled, not deleted): auth bypassed for local
  * development — all routes open.
  */
-const PROTECTED_PREFIXES = ['/dashboard', '/projects', '/tools'];
+const PROTECTED_PREFIXES = ['/dashboard', '/projects', '/settings'];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -36,5 +35,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/projects/:path*', '/tools/:path*'],
+  matcher: ['/dashboard/:path*', '/projects/:path*', '/settings/:path*'],
 };

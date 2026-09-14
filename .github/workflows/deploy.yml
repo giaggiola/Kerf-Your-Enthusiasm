@@ -15,6 +15,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: kerf
+          POSTGRES_PASSWORD: kerf-test-password
+          POSTGRES_DB: kerf_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kerf -d kerf_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://kerf:kerf-test-password@127.0.0.1:5432/kerf_test
+      BETTER_AUTH_SECRET: build-time-placeholder-not-a-real-secret
+
     steps:
       - name: Check out source
         uses: actions/checkout@v7
@@ -28,19 +47,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run optimizer regressions
+      - name: Run optimizer and parts regressions
         run: npm test
+
+      - name: Apply PostgreSQL migrations
+        run: npm run db:migrate
+
+      - name: Run PostgreSQL integration tests
+        run: npm run test:db
 
       - name: Lint
         run: npm run lint
 
       - name: Build production app
-        run: |
-          mkdir -p "$(dirname "$DATABASE_PATH")"
-          npm run build
-        env:
-          BETTER_AUTH_SECRET: build-time-placeholder-not-a-real-secret
-          DATABASE_PATH: ${{ runner.temp }}/kerf-build/app.db
+        run: npm run build
 
   backend-quality:
     name: Backend projection tests

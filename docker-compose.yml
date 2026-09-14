@@ -6,7 +6,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_PATH: /data/app.db
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to the Coolify PostgreSQL connection URL}
       STEP_STORAGE_DIR: /data/step-files
       FASTAPI_URL: http://backend:8000
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
@@ -16,7 +16,10 @@ services:
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       ALLOWED_EMAILS: ${ALLOWED_EMAILS}
     volumes:
-      - data:/data
+      - step-files:/data/step-files
+    networks:
+      - default
+      - database
     depends_on:
       backend:
         condition: service_healthy
@@ -43,4 +46,9 @@ services:
     restart: unless-stopped
 
 volumes:
-  data:
+  step-files:
+
+networks:
+  database:
+    external: true
+    name: ${COOLIFY_NETWORK:-eilish_net}

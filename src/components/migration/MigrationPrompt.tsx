@@ -12,7 +12,6 @@ export function MigrationPrompt() {
   const [localData, setLocalData] = useState<{
     stocks: unknown[];
     cuts: unknown[];
-    tools: unknown[];
   } | null>(null);
 
   useEffect(() => {
@@ -31,10 +30,9 @@ export function MigrationPrompt() {
     // Check for local data
     const stocks = JSON.parse(localStorage.getItem('kerf-your-enthusiasm-stocks') || '[]');
     const cuts = JSON.parse(localStorage.getItem('kerf-your-enthusiasm-cuts') || '[]');
-    const tools = JSON.parse(localStorage.getItem('kerf-your-enthusiasm-tools') || '[]');
 
-    if (stocks.length > 0 || cuts.length > 0 || tools.length > 0) {
-      setLocalData({ stocks, cuts, tools });
+    if (stocks.length > 0 || cuts.length > 0) {
+      setLocalData({ stocks, cuts });
       setShowPrompt(true);
     }
   }, [session]);
@@ -77,7 +75,7 @@ export function MigrationPrompt() {
   if (!showPrompt || !localData) return null;
 
   const totalItems =
-    localData.stocks.length + localData.cuts.length + localData.tools.length;
+    localData.stocks.length + localData.cuts.length;
 
   return (
     <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg border border-slate-200 max-w-sm z-50">
@@ -91,9 +89,6 @@ export function MigrationPrompt() {
         )}
         {localData.cuts.length > 0 && (
           <li>- {localData.cuts.length} cut(s)/part(s)</li>
-        )}
-        {localData.tools.length > 0 && (
-          <li>- {localData.tools.length} tool(s)</li>
         )}
       </ul>
       <p className="text-sm text-slate-600 mb-4">

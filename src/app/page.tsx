@@ -1,5 +1,9 @@
-import { redirect } from 'next/navigation';
-
 export default function Home() {
-  redirect('/cut-list');
+  return (
+    <div className="landing">
+      <h1 className="landing-title">
+        <span>Kerf Your</span>{' '}<span>Entursiasm</span>
+      </h1>
+    </div>
+  );
 }

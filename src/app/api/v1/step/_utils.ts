@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const FASTAPI = process.env.FASTAPI_URL ?? 'http://localhost:8000';
+export const FASTAPI = process.env.FASTAPI_URL ?? 'http://localhost:8001';
 
 export async function readJsonResponse(
   upstream: Response,

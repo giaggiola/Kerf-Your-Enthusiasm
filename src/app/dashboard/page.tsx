@@ -1,5 +1,7 @@
 'use client';
 
+import { createId } from '@/lib/id';
+
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -424,7 +426,7 @@ export default function DashboardPage() {
       }
 
       const cutIdMap = new Map<string, string>(
-        sourceProject.cuts.map((cut) => [cut.id, crypto.randomUUID()])
+        sourceProject.cuts.map((cut) => [cut.id, createId()])
       );
       const remappedLayout = remapLayoutState(
         {
@@ -451,7 +453,7 @@ export default function DashboardPage() {
             ? stepFileIdMap.get(sourceProject.stepActiveFileId) ?? null
             : null,
           stocks: sourceProject.stocks.map((stock) => ({
-            id: crypto.randomUUID(),
+            id: createId(),
             name: stock.name,
             l: stock.length,
             w: stock.width,
@@ -460,7 +462,7 @@ export default function DashboardPage() {
             mat: stock.material,
           })),
           cuts: sourceProject.cuts.map((cut) => ({
-            id: cutIdMap.get(cut.id) ?? crypto.randomUUID(),
+            id: cutIdMap.get(cut.id) ?? createId(),
             label: cut.label,
             l: cut.length,
             w: cut.width,
@@ -572,7 +574,7 @@ export default function DashboardPage() {
       const cutIdMap = new Map<string, string>(
         (bundle.project.cuts ?? []).map((cut, index) => [
           getBundleCutSourceId(cut, index),
-          crypto.randomUUID(),
+          createId(),
         ])
       );
       const remappedLayout = remapLayoutState(bundle.project.layout, cutIdMap);
@@ -586,7 +588,7 @@ export default function DashboardPage() {
         const sourceCutId = getBundleCutSourceId(cut, index);
 
         return {
-          id: cutIdMap.get(sourceCutId) ?? crypto.randomUUID(),
+          id: cutIdMap.get(sourceCutId) ?? createId(),
           label: cut.label,
           l: cut.l,
           w: cut.w,
@@ -617,7 +619,7 @@ export default function DashboardPage() {
             ? stepFileIdMap.get(bundle.project.stepActiveFileId) ?? null
             : null,
           stocks: (bundle.project.stocks ?? []).map((stock) => ({
-            id: crypto.randomUUID(),
+            id: createId(),
             name: stock.name,
             l: stock.l,
             w: stock.w,
@@ -820,9 +822,6 @@ export default function DashboardPage() {
               {projects.length === 0 ? 'Your projects will live here' : `${projects.length} project${projects.length === 1 ? '' : 's'}`}
             </h2>
           </div>
-          <Link href="/tools" className="text-sm font-medium text-[var(--muted)] hover:text-[var(--ink)]">
-            Shop tools →
-          </Link>
         </div>
 
         {projects.length === 0 ? (

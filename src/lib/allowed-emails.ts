@@ -1,3 +1,5 @@
+import { DEVELOPMENT_EMAIL, isDevelopmentLoginEnabled } from './development';
+
 /**
  * Access allowlist.
  *
@@ -19,6 +21,7 @@ const ALLOWED_EMAILS = new Set(
 
 export function isEmailAllowed(email: string | null | undefined): boolean {
   if (!email) return false;
+  if (email.toLowerCase() === DEVELOPMENT_EMAIL) return isDevelopmentLoginEnabled();
 
   if (ALLOWED_EMAILS.size === 0) {
     return process.env.NODE_ENV !== 'production';

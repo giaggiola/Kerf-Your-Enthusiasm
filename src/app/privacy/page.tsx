@@ -16,7 +16,7 @@ export default function PrivacyPage() {
 
         <h2 className="text-lg font-semibold text-slate-700 mt-6 mb-3">How we use your data</h2>
         <p className="text-slate-600 mb-4">
-          Your data is used solely to provide the service. Your projects, tools, and settings are
+          Your data is used solely to provide the service. Your projects and settings are
           stored securely and are only accessible to you. We don&apos;t sell, share, or use your
           data for advertising.
         </p>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession, unauthorized } from '@/lib/session';
 import { db } from '@/db';
-import { projects, stocks, cuts, tools } from '@/db/schema';
+import { projects, stocks, cuts } from '@/db/schema';
 
 interface LocalStock {
   name: string;
@@ -19,14 +19,6 @@ interface LocalCut {
   mat: string;
 }
 
-interface LocalTool {
-  name: string;
-  brand: string;
-  model: string;
-  cond: 'excellent' | 'good' | 'fair' | 'poor';
-  notes: string;
-}
-
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return unauthorized();
@@ -34,7 +26,6 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const localStocks: LocalStock[] = body.stocks || [];
   const localCuts: LocalCut[] = body.cuts || [];
-  const localTools: LocalTool[] = body.tools || [];
 
   let projectId: string | null = null;
 
@@ -83,27 +74,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Import tools
-  if (localTools.length > 0) {
-    await db.insert(tools).values(
-      localTools.map((t) => ({
-        userId: session.user.id,
-        name: t.name,
-        brand: t.brand,
-        model: t.model,
-        condition: t.cond,
-        notes: t.notes,
-      }))
-    );
-  }
-
   return NextResponse.json({
     success: true,
     projectId,
     imported: {
       stocks: localStocks.length,
       cuts: localCuts.length,
-      tools: localTools.length,
     },
   });
 }

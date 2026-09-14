@@ -6,7 +6,7 @@
  *
  * Kept here, commented out, in case the no-login local workflow is wanted back.
  * DEV_USER_ID is still exported because the 'dev-local' user row seeded in
- * db/index.ts may own projects and tools created before the switch.
+ * db/index.ts may own projects created before the switch.
  */
 export const DEV_USER_ID = 'dev-local';
 

@@ -1,13 +1,16 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError } from 'better-auth/api';
+import { username } from 'better-auth/plugins';
 import { db } from '@/db';
 import * as schema from '@/db/schema';
 import { isEmailAllowed } from '@/lib/allowed-emails';
+import { developmentLogin } from '@/lib/development-login';
+import { isDevelopmentLoginEnabled } from '@/lib/development';
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
-    provider: 'sqlite',
+    provider: 'pg',
     schema: {
       user: schema.users,
       session: schema.sessions,
@@ -15,10 +18,16 @@ export const auth = betterAuth({
       verification: schema.verifications,
     },
   }),
+  emailAndPassword: {
+    enabled: true,
+    disableSignUp: true,
+  },
+  plugins: [username(), ...(isDevelopmentLoginEnabled() ? [developmentLogin()] : [])],
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      disableSignUp: true,
     },
   },
   databaseHooks: {

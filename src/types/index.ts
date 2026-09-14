@@ -107,16 +107,6 @@ export interface OptimizationStats {
   unplaced: number;
 }
 
-// Tool inventory item
-export interface Tool {
-  id: number;
-  name: string;
-  brand: string;
-  model: string;
-  cond: 'excellent' | 'good' | 'fair' | 'poor';
-  notes: string;
-}
-
 // Stock preset
 export interface StockPreset {
   name: string;

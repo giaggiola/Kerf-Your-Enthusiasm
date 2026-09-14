@@ -124,10 +124,10 @@ export function StepPreviewPanel({
   return (
     <div className="flex h-full flex-col">
       {/* SVG preview area */}
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-xl border border-[var(--line)] bg-[#f3f4f0]">
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-none border border-[var(--line)] bg-[#fafafa]">
         {loading && <div className="text-sm text-[var(--muted)]">Projecting face…</div>}
         {!loading && error && (
-          <div className="px-4 text-center text-sm text-red-500">{error}</div>
+          <div className="px-4 text-center text-sm text-neutral-500">{error}</div>
         )}
         {!loading && !error && edgeData && (
           <div className="w-full h-full p-3">
@@ -154,7 +154,7 @@ export function StepPreviewPanel({
                   disabled={planarFaces.length <= 1}
                   aria-label="Previous planar face"
                   title="Previous planar face"
-                  className="rounded-lg border border-[var(--line)] bg-white px-2.5 py-1 text-xs hover:bg-black/[0.03] disabled:opacity-40"
+                  className="rounded-none border border-[var(--line)] bg-white px-2.5 py-1 text-xs hover:bg-black/[0.03] disabled:opacity-40"
                 >
                   ◀
                 </button>
@@ -164,7 +164,7 @@ export function StepPreviewPanel({
                   disabled={planarFaces.length <= 1}
                   aria-label="Next planar face"
                   title="Next planar face"
-                  className="rounded-lg border border-[var(--line)] bg-white px-2.5 py-1 text-xs hover:bg-black/[0.03] disabled:opacity-40"
+                  className="rounded-none border border-[var(--line)] bg-white px-2.5 py-1 text-xs hover:bg-black/[0.03] disabled:opacity-40"
                 >
                   ▶
                 </button>
@@ -173,14 +173,14 @@ export function StepPreviewPanel({
 
             {currentFace && (
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-lg bg-[#f3f4f0] p-2.5">
+                <div className="rounded-none bg-[#fafafa] p-2.5">
                   <p className="text-[10px] uppercase tracking-wide text-[var(--muted)]">Face area</p>
-                  <p className="mt-0.5 font-semibold text-[var(--ink)]">{(currentFace.area / 100).toFixed(1)} cm²</p>
+                  <p className="mt-0.5 font-medium text-[var(--ink)]">{(currentFace.area / 100).toFixed(1)} cm²</p>
                 </div>
                 {dims && (
-                  <div className="rounded-lg bg-[#f3f4f0] p-2.5">
+                  <div className="rounded-none bg-[#fafafa] p-2.5">
                     <p className="text-[10px] uppercase tracking-wide text-[var(--muted)]">Part size</p>
-                    <p className="mt-0.5 whitespace-nowrap font-semibold text-[var(--ink)]">
+                    <p className="mt-0.5 whitespace-nowrap font-medium text-[var(--ink)]">
                       {fmt(dims[0], units)} × {fmt(dims[1], units)} × {fmt(dims[2], units)} {dimLabel}
                     </p>
                   </div>
@@ -189,7 +189,7 @@ export function StepPreviewPanel({
             )}
 
             {isLikelyEndFace && (
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-900">
+              <div className="flex items-center justify-between gap-3 rounded-none border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-900">
                 <span>This looks like a small end face, not the main cut outline.</span>
                 <button
                   type="button"

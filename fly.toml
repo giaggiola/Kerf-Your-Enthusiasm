@@ -5,7 +5,8 @@ primary_region = "iad"
 
 [env]
   NODE_ENV = "production"
-  DATABASE_PATH = "/data/app.db"
+  STEP_STORAGE_DIR = "/data/step-files"
+  # Set DATABASE_URL as a secret pointing to a reachable PostgreSQL database.
 
 [http_service]
   internal_port = 3000
@@ -24,6 +25,6 @@ primary_region = "iad"
   cpu_kind = "shared"
   cpus = 1
 
-# Single instance for SQLite
+# Single instance for local STEP-file storage.
 [deploy]
   strategy = "immediate"

@@ -24,24 +24,12 @@ interface Props {
   onSelectFace: (bodyIdx: number, faceIdx: number) => void;
 }
 
-// Distinct pastel-ish colors per body (cycles)
-const BODY_PALETTE = [
-  0x93c5fd, // blue-300
-  0x86efac, // green-300
-  0xfda4af, // rose-300
-  0xd8b4fe, // purple-300
-  0xfdba74, // orange-300
-  0x67e8f9, // cyan-300
-  0xbef264, // lime-300
-  0xfde68a, // yellow-300
-  0xf9a8d4, // pink-300
-  0x6ee7b7, // emerald-300
-];
-
-const SEL_FACE_COLOR  = 0x2563eb; // blue-600
-const SEL_FACE_EMIT   = 0x1e3a8a;
-const HOVER_EMIT      = 0xd97706; // amber-600
-const SEL_BODY_EMIT   = 0x1e3a8a;
+// Neutral tones keep geometry readable without adding interface colour.
+const BODY_PALETTE = [0xcccccc, 0xaaaaaa, 0xdddddd, 0xbbbbbb];
+const SEL_FACE_COLOR = 0x333333;
+const SEL_FACE_EMIT = 0x111111;
+const HOVER_EMIT = 0x555555;
+const SEL_BODY_EMIT = 0x222222;
 
 export function StepViewer3D({
   meshData,
@@ -67,7 +55,7 @@ export function StepViewer3D({
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setClearColor(0xf8fafc);
+    renderer.setClearColor(0xfafafa);
     container.appendChild(renderer.domElement);
 
     // ── Scene / lights ───────────────────────────────────────────────────────

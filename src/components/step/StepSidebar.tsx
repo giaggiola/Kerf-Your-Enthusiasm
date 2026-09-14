@@ -74,7 +74,7 @@ function FolderRow({
         >
           <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
         </svg>
-        <span className="truncate text-xs font-semibold">{node.name}</span>
+        <span className="truncate text-xs font-medium">{node.name}</span>
       </div>
       {expanded && (
         <TreeLevel
@@ -149,12 +149,12 @@ export function StepSidebar({ bodyStates, selectedIndex, onSelect, onToggle, onR
       <div className="shrink-0 space-y-3 border-b border-[var(--line)] px-4 py-4">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-xs font-semibold text-[var(--ink)]">Assembly parts</p>
+            <p className="text-xs font-medium text-[var(--ink)]">Assembly parts</p>
             <p className="mt-0.5 text-[11px] text-[var(--muted)]">{includedCount} of {bodyStates.length} included</p>
           </div>
           <button
             onClick={onConfirmAll}
-            className="text-[11px] font-semibold text-[var(--accent-dark)] hover:underline"
+            className="text-[11px] font-medium text-[var(--accent-dark)] hover:underline"
           >
             Confirm all
           </button>
@@ -164,8 +164,8 @@ export function StepSidebar({ bodyStates, selectedIndex, onSelect, onToggle, onR
             <span>Faces confirmed</span>
             <span>{confirmedCount}/{includedCount}</span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-[#e6e8e3]">
-            <div className="h-full rounded-full bg-[var(--success)] transition-all" style={{ width: `${progress}%` }} />
+          <div className="h-1.5 overflow-hidden rounded-none bg-[#e6e8e3]">
+            <div className="h-full rounded-none bg-[var(--success)] transition-all" style={{ width: `${progress}%` }} />
           </div>
         </div>
       </div>

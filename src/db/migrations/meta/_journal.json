@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789327638228,
+      "tag": "0000_postgresql_initial",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789328517514,
+      "tag": "0001_username_login",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789337293215,
+      "tag": "0002_remove_tools",
+      "breakpoints": true
+    }
+  ]
+}
